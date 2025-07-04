@@ -1,8 +1,5 @@
 import { Resend } from "resend"
 
-// Inicializar Resend con tu API key
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 interface AppointmentData {
   name: string
   phone: string
@@ -16,11 +13,20 @@ interface AppointmentData {
   appointmentId: string
 }
 
-export async function sendAppointmentEmail(data: AppointmentData) {
-  // Verificar API key
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY no está configurada")
+// Función para obtener la instancia de Resend de forma segura
+function getResendInstance() {
+  const apiKey = process.env.RESEND_API_KEY
+
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY no está configurada en las variables de entorno")
   }
+
+  return new Resend(apiKey)
+}
+
+export async function sendAppointmentEmail(data: AppointmentData) {
+  // Obtener instancia de Resend
+  const resend = getResendInstance()
 
   const adminEmail = "davidbarrera.ar@gmail.com"
 
@@ -203,10 +209,8 @@ export async function sendAppointmentEmail(data: AppointmentData) {
 
 // Nueva función para enviar confirmación al cliente
 export async function sendClientConfirmation(data: AppointmentData) {
-  // Verificar API key
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY no está configurada")
-  }
+  // Obtener instancia de Resend
+  const resend = getResendInstance()
 
   // Solo enviar si el cliente proporcionó email
   if (!data.email) {
@@ -358,17 +362,12 @@ export async function sendClientConfirmation(data: AppointmentData) {
   }
 }
 
-// Función para verificar configuración (ya existía)
+// Función para verificar configuración
 export async function testResendConfiguration() {
-  if (!process.env.RESEND_API_KEY) {
-    return {
-      success: false,
-      error: "RESEND_API_KEY no configurada",
-      solution: "Agrega RESEND_API_KEY a tus variables de entorno",
-    }
-  }
-
   try {
+    // Obtener instancia de Resend
+    const resend = getResendInstance()
+
     // Test simple con Resend
     const result = await resend.emails.send({
       from: "onboarding@resend.dev",
