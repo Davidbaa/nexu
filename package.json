@@ -40,6 +40,7 @@
     "clsx": "^2.1.1",
     "cmdk": "latest",
     "embla-carousel-react": "latest",
+    "immer": "latest",
     "input-otp": "latest",
     "lucide-react": "^0.454.0",
     "next": "14.2.16",
@@ -54,7 +55,9 @@
     "sonner": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
-    "vaul": "latest"
+    "use-sync-external-store": "latest",
+    "vaul": "latest",
+    "zustand": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
