@@ -14,7 +14,13 @@ interface AppointmentData {
 }
 
 // Función para obtener la instancia de Resend de forma segura
+let resend: Resend | null = null
+
 function getResendInstance() {
+  if (resend) {
+    return resend
+  }
+
   const apiKey = process.env.RESEND_API_KEY
 
   if (!apiKey) {
@@ -23,15 +29,16 @@ function getResendInstance() {
   }
 
   console.log("✅ RESEND_API_KEY encontrada, inicializando Resend...")
-  return new Resend(apiKey)
+  resend = new Resend(apiKey)
+  return resend
 }
 
 export async function sendAppointmentEmail(data: AppointmentData) {
   console.log("📧 Iniciando envío de email de cita...")
 
   try {
-    // Obtener instancia de Resend solo cuando se necesite
-    const resend = getResendInstance()
+    // Obtener instancia de Resend
+    const resendInstance = getResendInstance()
     const adminEmail = "davidbarrera.ar@gmail.com"
 
     // Formatear datos
@@ -176,7 +183,7 @@ export async function sendAppointmentEmail(data: AppointmentData) {
 
     console.log("📧 Enviando notificación de cita a:", adminEmail)
 
-    const result = await resend.emails.send({
+    const result = await resendInstance.emails.send({
       from: "Nexu Citas <onboarding@resend.dev>",
       to: [adminEmail],
       subject: `🚨 NUEVA CITA URGENTE: ${data.name} - ${data.appliance} - ${formattedDate}`,
@@ -224,8 +231,8 @@ export async function sendClientConfirmation(data: AppointmentData) {
   }
 
   try {
-    // Obtener instancia de Resend solo cuando se necesite
-    const resend = getResendInstance()
+    // Obtener instancia de Resend
+    const resendInstance = getResendInstance()
 
     // Formatear datos
     const formattedDate = new Date(data.date).toLocaleDateString("es-MX", {
@@ -339,7 +346,7 @@ export async function sendClientConfirmation(data: AppointmentData) {
 
     console.log("📧 Enviando confirmación al cliente:", data.email)
 
-    const result = await resend.emails.send({
+    const result = await resendInstance.emails.send({
       from: "Nexu Confirmaciones <onboarding@resend.dev>",
       to: [data.email],
       subject: `✅ Cita Recibida - ${data.appliance} - ${formattedDate}`,
@@ -372,13 +379,13 @@ export async function testResendConfiguration() {
   try {
     console.log("🧪 Iniciando test de configuración de Resend...")
 
-    // Obtener instancia de Resend solo cuando se necesite
-    const resend = getResendInstance()
+    // Obtener instancia de Resend
+    const resendInstance = getResendInstance()
 
     console.log("📧 Enviando email de prueba...")
 
     // Test simple con Resend
-    const result = await resend.emails.send({
+    const result = await resendInstance.emails.send({
       from: "Nexu Test <onboarding@resend.dev>",
       to: ["davidbarrera.ar@gmail.com"],
       subject: "✅ Test Nexu - Configuración Exitosa",
