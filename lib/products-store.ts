@@ -1,3 +1,7 @@
+"use client"
+
+import { useState, useEffect } from "react"
+
 export interface Product {
   id: string
   name: string
@@ -220,10 +224,7 @@ class ProductsStore {
     }
 
     this.products.forEach((product) => {
-      // Contar categorías
       stats.categories[product.category] = (stats.categories[product.category] || 0) + 1
-
-      // Contar marcas
       stats.brands[product.brand] = (stats.brands[product.brand] || 0) + 1
     })
 
@@ -306,3 +307,45 @@ class ProductsStore {
 
 // Instancia singleton
 export const productsStore = new ProductsStore()
+
+// Hook para usar el store en componentes de React
+export function useProductStore() {
+  const [storeState, setStoreState] = useState(() => ({
+    products: productsStore.getProducts(),
+    stats: productsStore.getStats(),
+  }))
+
+  useEffect(() => {
+    const handleStoreChange = () => {
+      setStoreState({
+        products: productsStore.getProducts(),
+        stats: productsStore.getStats(),
+      })
+    }
+
+    const unsubscribe = productsStore.subscribe(handleStoreChange)
+    handleStoreChange()
+
+    return () => {
+      unsubscribe()
+    }
+  }, [])
+
+  return {
+    ...storeState,
+    // Devolvemos los métodos bindeados para asegurar el contexto correcto de `this`
+    getProducts: productsStore.getProducts.bind(productsStore),
+    getProduct: productsStore.getProduct.bind(productsStore),
+    addProduct: productsStore.addProduct.bind(productsStore),
+    updateProduct: productsStore.updateProduct.bind(productsStore),
+    deleteProduct: productsStore.deleteProduct.bind(productsStore),
+    importProducts: productsStore.importProducts.bind(productsStore),
+    replaceAllProducts: productsStore.replaceAllProducts.bind(productsStore),
+    clearProducts: productsStore.clearProducts.bind(productsStore),
+    resetToDefaults: productsStore.resetToDefaults.bind(productsStore),
+    searchProducts: productsStore.searchProducts.bind(productsStore),
+    filterProducts: productsStore.filterProducts.bind(productsStore),
+    exportToJSON: productsStore.exportToJSON.bind(productsStore),
+    exportToCSV: productsStore.exportToCSV.bind(productsStore),
+  }
+}
