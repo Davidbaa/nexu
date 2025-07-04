@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, MapPin, Phone, User, CheckCircle, X } from "lucide-react"
+import { Calendar, MapPin, Phone, User, CheckCircle, X, AlertCircle } from "lucide-react"
 
 interface AppointmentBookingProps {
   isOpen: boolean
@@ -19,6 +19,8 @@ export default function AppointmentBooking({ isOpen, onClose }: AppointmentBooki
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [appointmentId, setAppointmentId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -50,30 +52,50 @@ export default function AppointmentBooking({ isOpen, onClose }: AppointmentBooki
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError(null)
 
-    // Simular envío
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    setIsSubmitted(true)
-    setIsSubmitting(false)
-
-    // Reset después de 3 segundos
-    setTimeout(() => {
-      setIsSubmitted(false)
-      setCurrentStep(1)
-      setFormData({
-        name: "",
-        phone: "",
-        email: "",
-        address: "",
-        appliance: "",
-        problem: "",
-        date: "",
-        time: "",
-        zone: "",
+    try {
+      // Enviar a la API real
+      const response = await fetch("/api/appointments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
       })
-      onClose()
-    }, 3000)
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Error al agendar la cita")
+      }
+
+      setAppointmentId(result.appointmentId)
+      setIsSubmitted(true)
+
+      // Reset después de 5 segundos
+      setTimeout(() => {
+        setIsSubmitted(false)
+        setCurrentStep(1)
+        setAppointmentId(null)
+        setFormData({
+          name: "",
+          phone: "",
+          email: "",
+          address: "",
+          appliance: "",
+          problem: "",
+          date: "",
+          time: "",
+          zone: "",
+        })
+        onClose()
+      }, 5000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (!isOpen) return null
@@ -119,6 +141,13 @@ export default function AppointmentBooking({ isOpen, onClose }: AppointmentBooki
         </CardHeader>
 
         <CardContent className="p-6">
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+              <span className="text-red-800">{error}</span>
+            </div>
+          )}
+
           {!isSubmitted ? (
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Step 1: Información Personal */}
@@ -352,7 +381,7 @@ export default function AppointmentBooking({ isOpen, onClose }: AppointmentBooki
                     {isSubmitting ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Agendando...
+                        Enviando...
                       </>
                     ) : (
                       <>
@@ -368,6 +397,11 @@ export default function AppointmentBooking({ isOpen, onClose }: AppointmentBooki
             <div className="text-center py-8">
               <CheckCircle className="mx-auto h-16 w-16 text-green-600 mb-4" />
               <h3 className="text-xl font-semibold text-green-800 mb-2">¡Cita Agendada!</h3>
+              {appointmentId && (
+                <p className="text-sm text-gray-600 mb-2">
+                  ID de cita: <span className="font-mono font-medium">{appointmentId}</span>
+                </p>
+              )}
               <p className="text-gray-600 mb-4">
                 Hemos recibido tu solicitud. Un técnico se pondrá en contacto contigo en las próximas 2 horas para
                 confirmar la cita.
@@ -376,7 +410,7 @@ export default function AppointmentBooking({ isOpen, onClose }: AppointmentBooki
                 <Button
                   onClick={() => {
                     const message = encodeURIComponent(
-                      `Hola, acabo de agendar una cita para ${formData.appliance} el ${formData.date}`,
+                      `Hola, acabo de agendar una cita (${appointmentId}) para ${formData.appliance} el ${formData.date}`,
                     )
                     window.open(`https://wa.me/523338766231?text=${message}`, "_blank")
                   }}
