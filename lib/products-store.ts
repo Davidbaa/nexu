@@ -1,94 +1,99 @@
 export interface Product {
-  id: number
+  id: string
   name: string
+  sku: string
   brand: string
   category: string
   price: number
-  image: string
-  availability: string
+  stock: number
+  imageUrl: string
   description: string
+  availability: "in-stock" | "2-3-days" | "out-of-stock"
   installationAvailable: boolean
-  sku?: string
-  stock?: number
   createdAt: string
   updatedAt: string
 }
 
+// Productos por defecto para empezar
+const defaultProducts: Product[] = [
+  {
+    id: "1",
+    name: "Motor de Lavadora LG",
+    sku: "LG-MOT-001",
+    brand: "LG",
+    category: "lavadora",
+    price: 2500,
+    stock: 5,
+    imageUrl: "/placeholder.svg?height=300&width=300",
+    description: "Motor original para lavadoras LG. Compatible con modelos WM2016CW, WM2101HW, WM2301HR.",
+    availability: "in-stock",
+    installationAvailable: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "2",
+    name: "Compresor Refrigerador Samsung",
+    sku: "SAM-COMP-002",
+    brand: "Samsung",
+    category: "refrigerador",
+    price: 4200,
+    stock: 3,
+    imageUrl: "/placeholder.svg?height=300&width=300",
+    description: "Compresor original Samsung para refrigeradores de 18-22 pies cúbicos.",
+    availability: "in-stock",
+    installationAvailable: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "3",
+    name: "Resistencia Horno Whirlpool",
+    sku: "WHP-RES-003",
+    brand: "Whirlpool",
+    category: "horno",
+    price: 850,
+    stock: 8,
+    imageUrl: "/placeholder.svg?height=300&width=300",
+    description: "Resistencia de calentamiento para hornos Whirlpool. 2500W.",
+    availability: "in-stock",
+    installationAvailable: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+]
+
 class ProductsStore {
-  private readonly STORAGE_KEY = "nexu_products"
+  private storageKey = "nexu_products"
 
-  private getProducts(): Product[] {
-    if (typeof window === "undefined") return []
+  getProducts(): Product[] {
+    if (typeof window === "undefined") return defaultProducts
 
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY)
-      return stored ? JSON.parse(stored) : this.getDefaultProducts()
+      const stored = localStorage.getItem(this.storageKey)
+      if (stored) {
+        return JSON.parse(stored)
+      }
+
+      // Si no hay productos guardados, usar los por defecto
+      this.saveProducts(defaultProducts)
+      return defaultProducts
     } catch {
-      return this.getDefaultProducts()
+      return defaultProducts
     }
   }
 
-  private saveProducts(products: Product[]): void {
-    if (typeof window === "undefined") return
-
-    try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(products))
-    } catch (error) {
-      console.error("Error saving products:", error)
+  saveProducts(products: Product[]): void {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(this.storageKey, JSON.stringify(products))
     }
-  }
-
-  private getDefaultProducts(): Product[] {
-    return [
-      {
-        id: 1,
-        name: "Bomba de Agua para Lavadora LG",
-        brand: "LG",
-        category: "Lavadoras",
-        price: 850,
-        image: "/placeholder.svg?height=300&width=300",
-        availability: "En Stock",
-        description:
-          "Bomba de agua original para lavadoras LG. Compatible con modelos WM2016CW, WM2101HW, WM2301HR y más.",
-        installationAvailable: true,
-        sku: "LG-BOMBA-001",
-        stock: 15,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: 2,
-        name: "Termostato Refrigerador Samsung",
-        brand: "Samsung",
-        category: "Refrigeradores",
-        price: 1200,
-        image: "/placeholder.svg?height=300&width=300",
-        availability: "En Stock",
-        description: "Termostato de control de temperatura para refrigeradores Samsung. Modelo universal compatible.",
-        installationAvailable: true,
-        sku: "SAM-TERM-002",
-        stock: 8,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ]
-  }
-
-  getAllProducts(): Product[] {
-    return this.getProducts()
-  }
-
-  getProductById(id: number): Product | undefined {
-    return this.getProducts().find((product) => product.id === id)
   }
 
   addProduct(productData: Omit<Product, "id" | "createdAt" | "updatedAt">): Product {
     const products = this.getProducts()
-    const newId = Math.max(...products.map((p) => p.id), 0) + 1
-
     const newProduct: Product = {
       ...productData,
-      id: newId,
+      id: Date.now().toString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -98,9 +103,9 @@ class ProductsStore {
     return newProduct
   }
 
-  updateProduct(id: number, updates: Partial<Omit<Product, "id" | "createdAt">>): Product | null {
+  updateProduct(id: string, updates: Partial<Omit<Product, "id" | "createdAt">>): Product | null {
     const products = this.getProducts()
-    const index = products.findIndex((product) => product.id === id)
+    const index = products.findIndex((p) => p.id === id)
 
     if (index === -1) return null
 
@@ -114,9 +119,9 @@ class ProductsStore {
     return products[index]
   }
 
-  deleteProduct(id: number): boolean {
+  deleteProduct(id: string): boolean {
     const products = this.getProducts()
-    const filteredProducts = products.filter((product) => product.id !== id)
+    const filteredProducts = products.filter((p) => p.id !== id)
 
     if (filteredProducts.length === products.length) return false
 
@@ -124,14 +129,14 @@ class ProductsStore {
     return true
   }
 
-  getCategories(): string[] {
+  getProductById(id: string): Product | null {
     const products = this.getProducts()
-    return [...new Set(products.map((product) => product.category))]
+    return products.find((p) => p.id === id) || null
   }
 
-  getBrands(): string[] {
+  getProductsByCategory(category: string): Product[] {
     const products = this.getProducts()
-    return [...new Set(products.map((product) => product.brand))]
+    return products.filter((p) => p.category === category)
   }
 
   searchProducts(query: string): Product[] {
@@ -139,30 +144,31 @@ class ProductsStore {
     const lowercaseQuery = query.toLowerCase()
 
     return products.filter(
-      (product) =>
-        product.name.toLowerCase().includes(lowercaseQuery) ||
-        product.brand.toLowerCase().includes(lowercaseQuery) ||
-        product.category.toLowerCase().includes(lowercaseQuery) ||
-        product.description.toLowerCase().includes(lowercaseQuery) ||
-        (product.sku && product.sku.toLowerCase().includes(lowercaseQuery)),
+      (p) =>
+        p.name.toLowerCase().includes(lowercaseQuery) ||
+        p.brand.toLowerCase().includes(lowercaseQuery) ||
+        p.sku.toLowerCase().includes(lowercaseQuery) ||
+        p.description.toLowerCase().includes(lowercaseQuery),
     )
   }
 
-  getProductsByCategory(category: string): Product[] {
-    return this.getProducts().filter((product) => product.category === category)
-  }
-
-  getProductsByBrand(brand: string): Product[] {
-    return this.getProducts().filter((product) => product.brand === brand)
-  }
-
-  getTotalValue(): number {
+  getStats() {
     const products = this.getProducts()
-    return products.reduce((total, product) => total + product.price * (product.stock || 1), 0)
-  }
+    const totalProducts = products.length
+    const totalStock = products.reduce((sum, p) => sum + p.stock, 0)
+    const totalValue = products.reduce((sum, p) => sum + p.price * p.stock, 0)
+    const categories = [...new Set(products.map((p) => p.category))].length
+    const inStock = products.filter((p) => p.availability === "in-stock").length
+    const outOfStock = products.filter((p) => p.availability === "out-of-stock").length
 
-  getLowStockProducts(threshold = 5): Product[] {
-    return this.getProducts().filter((product) => (product.stock || 0) <= threshold)
+    return {
+      totalProducts,
+      totalStock,
+      totalValue,
+      categories,
+      inStock,
+      outOfStock,
+    }
   }
 }
 

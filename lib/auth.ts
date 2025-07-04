@@ -1,63 +1,63 @@
-export interface AuthUser {
+// Sistema de autenticación simple para el panel de administración
+export interface AdminUser {
   username: string
   isAuthenticated: boolean
+  loginTime: number
 }
 
-export class AuthService {
-  private static readonly ADMIN_USERNAME = "admin"
-  private static readonly ADMIN_PASSWORD = "nexu2024"
-  private static readonly AUTH_KEY = "nexu_admin_auth"
+// Credenciales del administrador (en producción, esto debería estar en variables de entorno)
+const ADMIN_CREDENTIALS = {
+  username: "admin",
+  password: "nexu2024",
+}
 
-  static login(username: string, password: string): boolean {
-    if (username === this.ADMIN_USERNAME && password === this.ADMIN_PASSWORD) {
-      const authData = {
-        username,
-        isAuthenticated: true,
-        timestamp: Date.now(),
-      }
-      localStorage.setItem(this.AUTH_KEY, JSON.stringify(authData))
-      return true
-    }
-    return false
+// Duración de la sesión (24 horas)
+const SESSION_DURATION = 24 * 60 * 60 * 1000
+
+export function authenticateAdmin(username: string, password: string): boolean {
+  return username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password
+}
+
+export function setAdminSession(username: string): void {
+  const session: AdminUser = {
+    username,
+    isAuthenticated: true,
+    loginTime: Date.now(),
   }
 
-  static logout(): void {
-    localStorage.removeItem(this.AUTH_KEY)
+  if (typeof window !== "undefined") {
+    localStorage.setItem("nexu_admin_session", JSON.stringify(session))
   }
+}
 
-  static isAuthenticated(): boolean {
-    try {
-      const authData = localStorage.getItem(this.AUTH_KEY)
-      if (!authData) return false
+export function getAdminSession(): AdminUser | null {
+  if (typeof window === "undefined") return null
 
-      const parsed = JSON.parse(authData)
-      const now = Date.now()
-      const sessionDuration = 24 * 60 * 60 * 1000 // 24 horas
+  try {
+    const sessionData = localStorage.getItem("nexu_admin_session")
+    if (!sessionData) return null
 
-      // Verificar si la sesión ha expirado
-      if (now - parsed.timestamp > sessionDuration) {
-        this.logout()
-        return false
-      }
+    const session: AdminUser = JSON.parse(sessionData)
 
-      return parsed.isAuthenticated === true
-    } catch {
-      return false
-    }
-  }
-
-  static getCurrentUser(): AuthUser | null {
-    try {
-      const authData = localStorage.getItem(this.AUTH_KEY)
-      if (!authData) return null
-
-      const parsed = JSON.parse(authData)
-      return {
-        username: parsed.username,
-        isAuthenticated: parsed.isAuthenticated,
-      }
-    } catch {
+    // Verificar si la sesión ha expirado
+    if (Date.now() - session.loginTime > SESSION_DURATION) {
+      clearAdminSession()
       return null
     }
+
+    return session
+  } catch {
+    return null
   }
+}
+
+export function clearAdminSession(): void {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("nexu_admin_session")
+  }
+}
+
+export function isAdminAuthenticated(): boolean {
+  const session = getAdminSession()
+  return session?.isAuthenticated === true
 }

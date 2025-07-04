@@ -18,7 +18,8 @@ function getResendInstance() {
   const apiKey = process.env.RESEND_API_KEY
 
   if (!apiKey) {
-    throw new Error("RESEND_API_KEY no está configurada en las variables de entorno")
+    console.warn("⚠️ RESEND_API_KEY no está configurada - modo simulación activado")
+    return null
   }
 
   return new Resend(apiKey)
@@ -27,6 +28,19 @@ function getResendInstance() {
 export async function sendAppointmentEmail(data: AppointmentData) {
   // Obtener instancia de Resend
   const resend = getResendInstance()
+
+  // Si no hay API key, simular envío exitoso
+  if (!resend) {
+    console.log("📧 Simulando envío de email admin (sin API key)")
+    return {
+      success: true,
+      provider: "simulation",
+      emailId: `sim_${Date.now()}`,
+      recipient: "davidbarrera.ar@gmail.com",
+      appointmentId: data.appointmentId,
+      simulated: true,
+    }
+  }
 
   const adminEmail = "davidbarrera.ar@gmail.com"
 
@@ -221,6 +235,19 @@ export async function sendClientConfirmation(data: AppointmentData) {
     }
   }
 
+  // Si no hay API key, simular envío exitoso
+  if (!resend) {
+    console.log("📧 Simulando confirmación al cliente (sin API key):", data.email)
+    return {
+      success: true,
+      provider: "simulation",
+      emailId: `sim_client_${Date.now()}`,
+      recipient: data.email,
+      appointmentId: data.appointmentId,
+      simulated: true,
+    }
+  }
+
   // Formatear datos
   const formattedDate = new Date(data.date).toLocaleDateString("es-MX", {
     weekday: "long",
@@ -367,6 +394,15 @@ export async function testResendConfiguration() {
   try {
     // Obtener instancia de Resend
     const resend = getResendInstance()
+
+    if (!resend) {
+      return {
+        success: false,
+        error: "RESEND_API_KEY no configurada",
+        solution: "Agrega RESEND_API_KEY a tus variables de entorno",
+        simulated: true,
+      }
+    }
 
     // Test simple con Resend
     const result = await resend.emails.send({

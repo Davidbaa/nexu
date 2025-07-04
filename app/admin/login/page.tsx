@@ -2,29 +2,23 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Lock, User, Shield } from "lucide-react"
-import { AuthService } from "@/lib/auth"
+import { Shield, Eye, EyeOff, Lock, User } from "lucide-react"
+import { authenticateAdmin, setAdminSession } from "@/lib/auth"
 
-export default function AdminLoginPage() {
+export default function AdminLogin() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-
-  useEffect(() => {
-    // Si ya está autenticado, redirigir al panel
-    if (AuthService.isAuthenticated()) {
-      router.push("/admin/productos")
-    }
-  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,10 +28,11 @@ export default function AdminLoginPage() {
     // Simular delay de autenticación
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    if (AuthService.login(username, password)) {
+    if (authenticateAdmin(username, password)) {
+      setAdminSession(username)
       router.push("/admin/productos")
     } else {
-      setError("Usuario o contraseña incorrectos")
+      setError("Credenciales incorrectas. Verifica tu usuario y contraseña.")
     }
 
     setIsLoading(false)
@@ -46,76 +41,96 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur">
-          <CardHeader className="text-center pb-8">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center mb-4">
-              <Shield className="h-8 w-8 text-white" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">Panel de Administración</CardTitle>
-            <CardDescription className="text-gray-600">Acceso exclusivo para administradores de Nexu</CardDescription>
-          </CardHeader>
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
+            <Shield className="h-8 w-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">Panel de Administración</h1>
+          <p className="text-slate-400">Nexu - Gestión de Productos</p>
+        </div>
 
+        {/* Login Form */}
+        <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+          <CardHeader>
+            <CardTitle className="text-white text-center">Iniciar Sesión</CardTitle>
+          </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <Alert className="bg-red-500/20 border-red-500/50 text-red-100">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="username" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="username" className="text-white">
                   Usuario
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                   <Input
                     id="username"
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     placeholder="Ingresa tu usuario"
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="password" className="text-white">
                   Contraseña
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     placeholder="Ingresa tu contraseña"
+                    className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-slate-400"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-white"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
 
-              {error && (
-                <Alert className="border-red-200 bg-red-50">
-                  <AlertDescription className="text-red-700">{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium"
-                disabled={isLoading}
-              >
-                {isLoading ? "Verificando..." : "Iniciar Sesión"}
+              <Button type="submit" disabled={isLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Verificando...
+                  </>
+                ) : (
+                  "Acceder al Panel"
+                )}
               </Button>
             </form>
 
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <div className="text-center">
-                <p className="text-xs text-gray-500">Sistema seguro de administración</p>
-                <p className="text-xs text-gray-400 mt-1">© 2024 Nexu - Refacciones Pro</p>
-              </div>
+            {/* Credentials hint for demo */}
+            <div className="mt-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+              <p className="text-blue-100 text-sm text-center">
+                <strong>Demo:</strong> Usuario: admin | Contraseña: nexu2024
+              </p>
             </div>
           </CardContent>
         </Card>
+
+        {/* Footer */}
+        <div className="text-center mt-8">
+          <p className="text-slate-400 text-sm">© 2024 Nexu. Panel de administración seguro.</p>
+        </div>
       </div>
     </div>
   )

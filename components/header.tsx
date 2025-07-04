@@ -2,13 +2,14 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, Phone, MessageCircle } from "lucide-react"
+import { Menu, Phone, Calendar } from "lucide-react"
+import AppointmentBooking from "./appointment-booking"
 
 export default function Header() {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isAppointmentOpen, setIsAppointmentOpen] = useState(false)
 
   const navigation = [
     { name: "Inicio", href: "/" },
@@ -21,83 +22,101 @@ export default function Header() {
   ]
 
   return (
-    <header className="bg-white shadow-sm border-b">
-      <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <Image src="/placeholder-logo.svg" alt="Nexu Logo" width={40} height={40} className="w-10 h-10" />
-            <span className="text-2xl font-bold text-blue-600">Nexu</span>
-          </Link>
+    <>
+      <header className="bg-white shadow-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <Link href="/" className="flex items-center">
+              <img src="/placeholder-logo.svg" alt="Nexu" className="h-8 w-auto" />
+              <span className="ml-2 text-xl font-bold text-gray-900">Nexu</span>
+            </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
-              >
-                {item.name}
-              </Link>
-            ))}
-          </nav>
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex space-x-8">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors"
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
 
-          {/* Contact Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link href="tel:+525512345678">
-                <Phone className="h-4 w-4 mr-2" />
-                Llamar
-              </Link>
-            </Button>
-            <Button size="sm" className="bg-green-600 hover:bg-green-700" asChild>
-              <Link href="https://wa.me/525512345678" target="_blank">
-                <MessageCircle className="h-4 w-4 mr-2" />
-                WhatsApp
-              </Link>
-            </Button>
-          </div>
-
-          {/* Mobile Menu */}
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="sm" className="md:hidden">
-                <Menu className="h-5 w-5" />
+            {/* Desktop Actions */}
+            <div className="hidden md:flex items-center space-x-4">
+              <Button onClick={() => setIsAppointmentOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                <Calendar className="h-4 w-4 mr-2" />
+                Agendar Cita
               </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-              <div className="flex flex-col space-y-4 mt-8">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="text-lg font-medium text-gray-700 hover:text-blue-600 transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
+              <Button
+                onClick={() => window.open("https://wa.me/523338766231", "_blank")}
+                variant="outline"
+                className="border-green-600 text-green-600 hover:bg-green-50"
+              >
+                <Phone className="h-4 w-4 mr-2" />
+                WhatsApp
+              </Button>
+            </div>
 
-                <div className="pt-4 space-y-2">
-                  <Button variant="outline" className="w-full bg-transparent" asChild>
-                    <Link href="tel:+525512345678">
-                      <Phone className="h-4 w-4 mr-2" />
-                      Llamar
+            {/* Mobile menu button */}
+            <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-80">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <img src="/placeholder-logo.svg" alt="Nexu" className="h-8 w-auto" />
+                    <span className="ml-2 text-xl font-bold text-gray-900">Nexu</span>
+                  </div>
+                </div>
+
+                <nav className="space-y-4">
+                  {navigation.map((item) => (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      {item.name}
                     </Link>
+                  ))}
+                </nav>
+
+                <div className="mt-8 space-y-4">
+                  <Button
+                    onClick={() => {
+                      setIsAppointmentOpen(true)
+                      setIsMenuOpen(false)
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Agendar Cita
                   </Button>
-                  <Button className="w-full bg-green-600 hover:bg-green-700" asChild>
-                    <Link href="https://wa.me/525512345678" target="_blank">
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      WhatsApp
-                    </Link>
+                  <Button
+                    onClick={() => window.open("https://wa.me/523338766231", "_blank")}
+                    variant="outline"
+                    className="w-full border-green-600 text-green-600 hover:bg-green-50"
+                  >
+                    <Phone className="h-4 w-4 mr-2" />
+                    WhatsApp
                   </Button>
                 </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Appointment Booking Modal */}
+      <AppointmentBooking isOpen={isAppointmentOpen} onClose={() => setIsAppointmentOpen(false)} />
+    </>
   )
 }
