@@ -1,12 +1,7 @@
 import { Resend } from "resend"
 
-// Inicializar Resend con validación
+// Inicializar Resend con tu API key
 const resend = new Resend(process.env.RESEND_API_KEY)
-
-// Verificar que la API key esté configurada
-if (!process.env.RESEND_API_KEY) {
-  console.error("❌ RESEND_API_KEY no está configurada")
-}
 
 interface AppointmentData {
   name: string
@@ -24,12 +19,12 @@ interface AppointmentData {
 export async function sendAppointmentEmail(data: AppointmentData) {
   // Verificar API key
   if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY no está configurada. Agrega la variable de entorno.")
+    throw new Error("RESEND_API_KEY no está configurada")
   }
 
   const adminEmail = "davidbarrera.ar@gmail.com"
 
-  // Formatear datos para el email
+  // Formatear datos
   const formattedDate = new Date(data.date).toLocaleDateString("es-MX", {
     weekday: "long",
     year: "numeric",
@@ -43,7 +38,7 @@ export async function sendAppointmentEmail(data: AppointmentData) {
     evening: "Noche (17:00 - 20:00)",
   }
 
-  // Template HTML profesional (mismo que antes)
+  // Template HTML optimizado
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -55,110 +50,110 @@ export async function sendAppointmentEmail(data: AppointmentData) {
         .container { max-width: 600px; margin: 0 auto; background: white; }
         .header { background: linear-gradient(135deg, #1e293b, #334155); color: white; padding: 30px 20px; text-align: center; }
         .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
-        .header p { margin: 8px 0 0 0; opacity: 0.9; font-size: 16px; }
-        .content { padding: 0; }
-        .section { margin: 0; padding: 25px; border-bottom: 1px solid #e2e8f0; }
-        .section:last-child { border-bottom: none; }
-        .section h2 { color: #1e293b; margin: 0 0 20px 0; font-size: 20px; font-weight: 600; display: flex; align-items: center; }
-        .section h2 .emoji { margin-right: 10px; font-size: 24px; }
-        .info-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; margin-bottom: 15px; }
-        .info-label { font-weight: 600; color: #64748b; font-size: 14px; }
-        .info-value { color: #1e293b; font-size: 14px; }
+        .urgent-banner { background: #fef2f2; border: 2px solid #fecaca; padding: 15px; margin: 20px; border-radius: 8px; text-align: center; }
+        .urgent-banner h3 { color: #dc2626; margin: 0 0 5px 0; font-size: 18px; }
+        .urgent-banner p { color: #dc2626; margin: 0; font-weight: 600; }
+        .section { padding: 25px; border-bottom: 1px solid #e2e8f0; }
+        .section h2 { color: #1e293b; margin: 0 0 20px 0; font-size: 20px; font-weight: 600; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+        .info-label { font-weight: 600; color: #64748b; }
+        .info-value { color: #1e293b; font-weight: 500; }
         .problem-box { background: #f1f5f9; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin-top: 15px; }
-        .problem-label { font-weight: 600; color: #64748b; margin-bottom: 8px; font-size: 14px; }
-        .problem-text { color: #1e293b; line-height: 1.5; font-size: 14px; }
-        .actions { background: #dcfce7; padding: 25px; margin: 0; }
-        .actions h3 { color: #166534; margin: 0 0 15px 0; font-size: 18px; font-weight: 600; }
-        .actions ul { color: #166534; margin: 0; padding-left: 20px; }
-        .actions li { margin-bottom: 8px; font-size: 14px; }
         .contact-buttons { text-align: center; padding: 25px; background: #f8fafc; }
-        .contact-buttons h3 { color: #1e293b; margin: 0 0 20px 0; font-size: 18px; }
-        .btn { display: inline-block; padding: 12px 24px; margin: 0 8px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; }
+        .btn { display: inline-block; padding: 15px 30px; margin: 0 10px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }
         .btn-whatsapp { background: #25d366; color: white; }
         .btn-phone { background: #3b82f6; color: white; }
+        .checklist { background: #dcfce7; padding: 25px; }
+        .checklist h3 { color: #166534; margin: 0 0 15px 0; }
+        .checklist ul { color: #166534; margin: 0; padding-left: 20px; }
+        .checklist li { margin-bottom: 8px; font-size: 15px; }
         .footer { background: #1e293b; color: white; padding: 25px; text-align: center; }
-        .appointment-id { font-family: 'SF Mono', Monaco, monospace; font-size: 20px; font-weight: 700; margin: 8px 0; letter-spacing: 1px; }
-        .timestamp { font-size: 12px; opacity: 0.7; margin-top: 15px; }
-        .urgent { background: #fef2f2; border: 2px solid #fecaca; padding: 15px; border-radius: 8px; margin: 20px 0; }
-        .urgent h4 { color: #dc2626; margin: 0 0 10px 0; }
-        @media (max-width: 600px) {
-          .info-grid { grid-template-columns: 1fr; gap: 8px; }
-          .btn { display: block; margin: 8px 0; }
-        }
+        .appointment-id { font-family: monospace; font-size: 24px; font-weight: bold; margin: 10px 0; letter-spacing: 2px; }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <h1>🔧 Nueva Cita Agendada</h1>
-          <p>Nexu - Refacciones Pro</p>
+          <h1>🔧 NUEVA CITA AGENDADA</h1>
+          <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 16px;">Nexu - Refacciones Pro</p>
         </div>
         
-        <div class="content">
-          <div class="urgent">
-            <h4>🚨 ACCIÓN REQUERIDA</h4>
-            <p style="margin: 0; color: #dc2626; font-weight: 600;">Contactar al cliente en las próximas 2 horas para confirmar la cita.</p>
-          </div>
+        <div class="urgent-banner">
+          <h3>🚨 ACCIÓN INMEDIATA REQUERIDA</h3>
+          <p>Contactar al cliente en las próximas 2 horas para confirmar la cita</p>
+        </div>
 
-          <div class="section">
-            <h2><span class="emoji">👤</span>Información del Cliente</h2>
-            <div class="info-grid">
-              <div class="info-label">Nombre:</div>
-              <div class="info-value">${data.name}</div>
-              <div class="info-label">Teléfono:</div>
-              <div class="info-value">${data.phone}</div>
-              ${data.email ? `<div class="info-label">Email:</div><div class="info-value">${data.email}</div>` : ""}
-              <div class="info-label">Zona:</div>
-              <div class="info-value" style="text-transform: capitalize;">${data.zone.replace("-", " ")}</div>
-            </div>
+        <div class="section">
+          <h2>👤 Información del Cliente</h2>
+          <div class="info-row">
+            <span class="info-label">Nombre:</span>
+            <span class="info-value">${data.name}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Teléfono:</span>
+            <span class="info-value">${data.phone}</span>
+          </div>
+          ${data.email ? `<div class="info-row"><span class="info-label">Email:</span><span class="info-value">${data.email}</span></div>` : ""}
+          <div class="info-row">
+            <span class="info-label">Zona:</span>
+            <span class="info-value" style="text-transform: capitalize;">${data.zone.replace("-", " ")}</span>
+          </div>
+          <div style="margin-top: 15px;">
             <div class="info-label">Dirección completa:</div>
-            <div class="info-value" style="margin-top: 5px; padding: 10px; background: #f8fafc; border-radius: 6px;">${data.address}</div>
-          </div>
-
-          <div class="section">
-            <h2><span class="emoji">🔧</span>Detalles del Servicio</h2>
-            <div class="info-grid">
-              <div class="info-label">Electrodoméstico:</div>
-              <div class="info-value" style="text-transform: capitalize; font-weight: 600; color: #dc2626;">${data.appliance}</div>
-              <div class="info-label">Fecha solicitada:</div>
-              <div class="info-value" style="font-weight: 600;">${formattedDate}</div>
-              <div class="info-label">Horario:</div>
-              <div class="info-value" style="font-weight: 600;">${timeLabels[data.time as keyof typeof timeLabels]}</div>
-            </div>
-            
-            <div class="problem-box">
-              <div class="problem-label">Problema descrito:</div>
-              <div class="problem-text">${data.problem}</div>
+            <div style="margin-top: 5px; padding: 15px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+              ${data.address}
             </div>
           </div>
+        </div>
 
-          <div class="actions">
-            <h3>⚡ Lista de Verificación:</h3>
-            <ul>
-              <li><strong>☐ Contactar al cliente en 2 horas máximo</strong></li>
-              <li>☐ Verificar disponibilidad de técnico en ${data.zone.replace("-", " ")}</li>
-              <li>☐ Confirmar fecha definitiva: ${formattedDate}</li>
-              <li>☐ Preparar refacciones comunes para ${data.appliance}</li>
-              <li>☐ Programar recordatorio 24h antes</li>
-              <li>☐ Actualizar estado en sistema</li>
-            </ul>
+        <div class="section">
+          <h2>🔧 Detalles del Servicio</h2>
+          <div class="info-row">
+            <span class="info-label">Electrodoméstico:</span>
+            <span class="info-value" style="text-transform: capitalize; color: #dc2626; font-weight: 700;">${data.appliance}</span>
           </div>
+          <div class="info-row">
+            <span class="info-label">Fecha solicitada:</span>
+            <span class="info-value" style="font-weight: 700;">${formattedDate}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Horario:</span>
+            <span class="info-value" style="font-weight: 700;">${timeLabels[data.time as keyof typeof timeLabels]}</span>
+          </div>
+          
+          <div class="problem-box">
+            <div style="font-weight: 600; color: #64748b; margin-bottom: 10px;">Problema descrito:</div>
+            <div style="color: #1e293b; line-height: 1.6; font-size: 15px;">${data.problem}</div>
+          </div>
+        </div>
 
-          <div class="contact-buttons">
-            <h3>📱 Contacto Inmediato</h3>
-            <a href="https://wa.me/52${data.phone.replace(/\D/g, "")}" class="btn btn-whatsapp">
-              💬 Abrir WhatsApp
-            </a>
-            <a href="tel:${data.phone}" class="btn btn-phone">
-              📞 Llamar Ahora
-            </a>
-          </div>
+        <div class="contact-buttons">
+          <h2 style="color: #1e293b; margin: 0 0 20px 0;">📱 Contacto Inmediato</h2>
+          <a href="https://wa.me/52${data.phone.replace(/\D/g, "")}" class="btn btn-whatsapp">
+            💬 Abrir WhatsApp
+          </a>
+          <a href="tel:${data.phone}" class="btn btn-phone">
+            📞 Llamar Ahora
+          </a>
+        </div>
+
+        <div class="checklist">
+          <h3>⚡ Lista de Verificación - Próximos Pasos:</h3>
+          <ul>
+            <li><strong>☐ URGENTE: Contactar cliente en máximo 2 horas</strong></li>
+            <li>☐ Verificar disponibilidad de técnico en ${data.zone.replace("-", " ")}</li>
+            <li>☐ Confirmar fecha definitiva: ${formattedDate}</li>
+            <li>☐ Preparar refacciones comunes para ${data.appliance}</li>
+            <li>☐ Programar recordatorio automático 24h antes</li>
+            <li>☐ Actualizar estado de cita en sistema</li>
+            <li>☐ Enviar confirmación final al cliente</li>
+          </ul>
         </div>
 
         <div class="footer">
           <p style="margin: 0; font-size: 14px; opacity: 0.8;">ID de Cita:</p>
           <div class="appointment-id">${data.appointmentId}</div>
-          <div class="timestamp">
+          <div style="font-size: 12px; opacity: 0.7; margin-top: 15px;">
             Generado automáticamente • ${new Date().toLocaleString("es-MX", {
               timeZone: "America/Mexico_City",
             })}
@@ -169,53 +164,16 @@ export async function sendAppointmentEmail(data: AppointmentData) {
     </html>
   `
 
-  // Texto plano mejorado
-  const textContent = `
-🔧 NUEVA CITA NEXU - ${data.appointmentId}
-
-🚨 ACCIÓN REQUERIDA: Contactar cliente en 2 horas
-
-👤 CLIENTE:
-- Nombre: ${data.name}
-- Teléfono: ${data.phone}
-${data.email ? `- Email: ${data.email}` : ""}
-- Zona: ${data.zone.replace("-", " ")}
-- Dirección: ${data.address}
-
-🔧 SERVICIO:
-- Electrodoméstico: ${data.appliance}
-- Fecha: ${formattedDate}
-- Horario: ${timeLabels[data.time as keyof typeof timeLabels]}
-- Problema: ${data.problem}
-
-⚡ LISTA DE VERIFICACIÓN:
-☐ Contactar cliente en 2 horas
-☐ Verificar técnico disponible
-☐ Confirmar fecha definitiva
-☐ Preparar refacciones
-☐ Programar recordatorio
-
-📱 CONTACTO:
-WhatsApp: https://wa.me/52${data.phone.replace(/\D/g, "")}
-Teléfono: ${data.phone}
-
----
-Nexu - Refacciones Pro
-${new Date().toLocaleString("es-MX")}
-  `
-
   try {
-    console.log("📧 Enviando email con Resend...")
+    console.log("📧 Enviando notificación de cita a:", adminEmail)
 
-    // Enviar email con Resend
     const result = await resend.emails.send({
-      from: "Nexu Citas <onboarding@resend.dev>", // Cambiar cuando tengas dominio verificado
+      from: "Nexu Citas <onboarding@resend.dev>",
       to: [adminEmail],
-      subject: `🚨 NUEVA CITA: ${data.name} - ${data.appliance} - ${formattedDate}`,
+      subject: `🚨 NUEVA CITA URGENTE: ${data.name} - ${data.appliance} - ${formattedDate}`,
       html: htmlContent,
-      text: textContent,
       headers: {
-        "X-Priority": "1", // Alta prioridad
+        "X-Priority": "1",
         "X-MSMail-Priority": "High",
         Importance: "high",
       },
@@ -235,67 +193,10 @@ ${new Date().toLocaleString("es-MX")}
       provider: "resend",
       emailId: result.data?.id,
       recipient: adminEmail,
-      subject: `🚨 NUEVA CITA: ${data.name} - ${data.appliance}`,
       appointmentId: data.appointmentId,
     }
   } catch (error) {
-    console.error("❌ Error enviando email con Resend:", error)
-
-    // Información detallada del error
-    if (error instanceof Error) {
-      console.error("Error message:", error.message)
-
-      // Errores comunes de Resend
-      if (error.message.includes("API key")) {
-        throw new Error("API key de Resend inválida. Verifica que esté configurada correctamente.")
-      }
-      if (error.message.includes("domain")) {
-        throw new Error("Dominio no verificado. Usa onboarding@resend.dev temporalmente.")
-      }
-      if (error.message.includes("rate limit")) {
-        throw new Error("Límite de emails alcanzado. Espera unos minutos.")
-      }
-    }
-
-    throw new Error(`Error enviando email: ${error instanceof Error ? error.message : "Error desconocido"}`)
-  }
-}
-
-// Función para verificar configuración
-export async function testResendConfiguration() {
-  if (!process.env.RESEND_API_KEY) {
-    return {
-      success: false,
-      error: "RESEND_API_KEY no configurada",
-      solution: "Agrega RESEND_API_KEY a tus variables de entorno",
-    }
-  }
-
-  try {
-    // Test simple con Resend
-    const result = await resend.emails.send({
-      from: "onboarding@resend.dev",
-      to: ["davidbarrera.ar@gmail.com"],
-      subject: "✅ Test Nexu - Configuración Exitosa",
-      html: `
-        <h1>🎉 ¡Resend Configurado Correctamente!</h1>
-        <p>El sistema de emails de Nexu está funcionando perfectamente.</p>
-        <p>Ahora recibirás automáticamente todas las citas agendadas.</p>
-        <hr>
-        <small>Test enviado: ${new Date().toLocaleString("es-MX")}</small>
-      `,
-    })
-
-    return {
-      success: true,
-      emailId: result.data?.id,
-      message: "Configuración exitosa. Revisa tu email.",
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Error desconocido",
-      solution: "Verifica tu API key de Resend",
-    }
+    console.error("❌ Error enviando email:", error)
+    throw error
   }
 }
