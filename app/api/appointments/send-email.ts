@@ -1,7 +1,12 @@
 import { Resend } from "resend"
 
-// Inicializar Resend
+// Inicializar Resend con validación
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+// Verificar que la API key esté configurada
+if (!process.env.RESEND_API_KEY) {
+  console.error("❌ RESEND_API_KEY no está configurada")
+}
 
 interface AppointmentData {
   name: string
@@ -17,6 +22,11 @@ interface AppointmentData {
 }
 
 export async function sendAppointmentEmail(data: AppointmentData) {
+  // Verificar API key
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY no está configurada. Agrega la variable de entorno.")
+  }
+
   const adminEmail = "davidbarrera.ar@gmail.com"
 
   // Formatear datos para el email
@@ -33,7 +43,7 @@ export async function sendAppointmentEmail(data: AppointmentData) {
     evening: "Noche (17:00 - 20:00)",
   }
 
-  // Template HTML profesional
+  // Template HTML profesional (mismo que antes)
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -69,6 +79,8 @@ export async function sendAppointmentEmail(data: AppointmentData) {
         .footer { background: #1e293b; color: white; padding: 25px; text-align: center; }
         .appointment-id { font-family: 'SF Mono', Monaco, monospace; font-size: 20px; font-weight: 700; margin: 8px 0; letter-spacing: 1px; }
         .timestamp { font-size: 12px; opacity: 0.7; margin-top: 15px; }
+        .urgent { background: #fef2f2; border: 2px solid #fecaca; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .urgent h4 { color: #dc2626; margin: 0 0 10px 0; }
         @media (max-width: 600px) {
           .info-grid { grid-template-columns: 1fr; gap: 8px; }
           .btn { display: block; margin: 8px 0; }
@@ -83,6 +95,11 @@ export async function sendAppointmentEmail(data: AppointmentData) {
         </div>
         
         <div class="content">
+          <div class="urgent">
+            <h4>🚨 ACCIÓN REQUERIDA</h4>
+            <p style="margin: 0; color: #dc2626; font-weight: 600;">Contactar al cliente en las próximas 2 horas para confirmar la cita.</p>
+          </div>
+
           <div class="section">
             <h2><span class="emoji">👤</span>Información del Cliente</h2>
             <div class="info-grid">
@@ -102,7 +119,7 @@ export async function sendAppointmentEmail(data: AppointmentData) {
             <h2><span class="emoji">🔧</span>Detalles del Servicio</h2>
             <div class="info-grid">
               <div class="info-label">Electrodoméstico:</div>
-              <div class="info-value" style="text-transform: capitalize; font-weight: 600;">${data.appliance}</div>
+              <div class="info-value" style="text-transform: capitalize; font-weight: 600; color: #dc2626;">${data.appliance}</div>
               <div class="info-label">Fecha solicitada:</div>
               <div class="info-value" style="font-weight: 600;">${formattedDate}</div>
               <div class="info-label">Horario:</div>
@@ -116,18 +133,19 @@ export async function sendAppointmentEmail(data: AppointmentData) {
           </div>
 
           <div class="actions">
-            <h3>⚡ Próximos Pasos:</h3>
+            <h3>⚡ Lista de Verificación:</h3>
             <ul>
-              <li><strong>Contactar al cliente en las próximas 2 horas</strong></li>
-              <li>Confirmar disponibilidad de técnico para ${data.zone.replace("-", " ")}</li>
-              <li>Agendar cita definitiva para ${formattedDate}</li>
-              <li>Enviar recordatorio 24h antes de la cita</li>
-              <li>Preparar refacciones comunes para ${data.appliance}</li>
+              <li><strong>☐ Contactar al cliente en 2 horas máximo</strong></li>
+              <li>☐ Verificar disponibilidad de técnico en ${data.zone.replace("-", " ")}</li>
+              <li>☐ Confirmar fecha definitiva: ${formattedDate}</li>
+              <li>☐ Preparar refacciones comunes para ${data.appliance}</li>
+              <li>☐ Programar recordatorio 24h antes</li>
+              <li>☐ Actualizar estado en sistema</li>
             </ul>
           </div>
 
           <div class="contact-buttons">
-            <h3>📱 Contacto Directo</h3>
+            <h3>📱 Contacto Inmediato</h3>
             <a href="https://wa.me/52${data.phone.replace(/\D/g, "")}" class="btn btn-whatsapp">
               💬 Abrir WhatsApp
             </a>
@@ -151,164 +169,133 @@ export async function sendAppointmentEmail(data: AppointmentData) {
     </html>
   `
 
-  // Texto plano como fallback
+  // Texto plano mejorado
   const textContent = `
-NUEVA CITA NEXU - ${data.appointmentId}
+🔧 NUEVA CITA NEXU - ${data.appointmentId}
 
-CLIENTE:
+🚨 ACCIÓN REQUERIDA: Contactar cliente en 2 horas
+
+👤 CLIENTE:
 - Nombre: ${data.name}
 - Teléfono: ${data.phone}
 ${data.email ? `- Email: ${data.email}` : ""}
-- Dirección: ${data.address}
 - Zona: ${data.zone.replace("-", " ")}
+- Dirección: ${data.address}
 
-SERVICIO:
+🔧 SERVICIO:
 - Electrodoméstico: ${data.appliance}
 - Fecha: ${formattedDate}
 - Horario: ${timeLabels[data.time as keyof typeof timeLabels]}
 - Problema: ${data.problem}
 
-PRÓXIMOS PASOS:
-1. Contactar cliente en 2 horas
-2. Confirmar técnico disponible
-3. Agendar cita definitiva
-4. Enviar recordatorio 24h antes
+⚡ LISTA DE VERIFICACIÓN:
+☐ Contactar cliente en 2 horas
+☐ Verificar técnico disponible
+☐ Confirmar fecha definitiva
+☐ Preparar refacciones
+☐ Programar recordatorio
 
+📱 CONTACTO:
 WhatsApp: https://wa.me/52${data.phone.replace(/\D/g, "")}
 Teléfono: ${data.phone}
 
 ---
-Generado automáticamente por Nexu
+Nexu - Refacciones Pro
 ${new Date().toLocaleString("es-MX")}
   `
 
   try {
+    console.log("📧 Enviando email con Resend...")
+
     // Enviar email con Resend
     const result = await resend.emails.send({
-      from: "Nexu Citas <citas@nexu.mx>",
+      from: "Nexu Citas <onboarding@resend.dev>", // Cambiar cuando tengas dominio verificado
       to: [adminEmail],
-      subject: `🔧 Nueva Cita: ${data.name} - ${data.appliance} - ${formattedDate}`,
+      subject: `🚨 NUEVA CITA: ${data.name} - ${data.appliance} - ${formattedDate}`,
       html: htmlContent,
       text: textContent,
       headers: {
         "X-Priority": "1", // Alta prioridad
         "X-MSMail-Priority": "High",
+        Importance: "high",
       },
       tags: [
         { name: "category", value: "appointment" },
         { name: "zone", value: data.zone },
         { name: "appliance", value: data.appliance },
+        { name: "urgent", value: "true" },
       ],
     })
 
-    console.log("✅ Email enviado exitosamente con Resend:", result.data?.id)
+    console.log("✅ Email enviado exitosamente!")
+    console.log("📧 Email ID:", result.data?.id)
 
     return {
       success: true,
       provider: "resend",
       emailId: result.data?.id,
       recipient: adminEmail,
-      subject: `🔧 Nueva Cita: ${data.name} - ${data.appliance}`,
+      subject: `🚨 NUEVA CITA: ${data.name} - ${data.appliance}`,
       appointmentId: data.appointmentId,
     }
   } catch (error) {
     console.error("❌ Error enviando email con Resend:", error)
+
+    // Información detallada del error
+    if (error instanceof Error) {
+      console.error("Error message:", error.message)
+
+      // Errores comunes de Resend
+      if (error.message.includes("API key")) {
+        throw new Error("API key de Resend inválida. Verifica que esté configurada correctamente.")
+      }
+      if (error.message.includes("domain")) {
+        throw new Error("Dominio no verificado. Usa onboarding@resend.dev temporalmente.")
+      }
+      if (error.message.includes("rate limit")) {
+        throw new Error("Límite de emails alcanzado. Espera unos minutos.")
+      }
+    }
+
     throw new Error(`Error enviando email: ${error instanceof Error ? error.message : "Error desconocido"}`)
   }
 }
 
-// Función adicional para enviar confirmación al cliente (opcional)
-export async function sendClientConfirmation(data: AppointmentData) {
-  if (!data.email) return null
-
-  const formattedDate = new Date(data.date).toLocaleDateString("es-MX", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
-
-  const timeLabels = {
-    morning: "Mañana (9:00 - 12:00)",
-    afternoon: "Tarde (12:00 - 17:00)",
-    evening: "Noche (17:00 - 20:00)",
+// Función para verificar configuración
+export async function testResendConfiguration() {
+  if (!process.env.RESEND_API_KEY) {
+    return {
+      success: false,
+      error: "RESEND_API_KEY no configurada",
+      solution: "Agrega RESEND_API_KEY a tus variables de entorno",
+    }
   }
 
-  const clientHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 500px; margin: 0 auto; background: white; }
-        .header { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 25px; text-align: center; }
-        .content { padding: 25px; }
-        .section { margin-bottom: 20px; padding: 20px; background: #f8fafc; border-radius: 8px; }
-        .highlight { background: #dcfce7; padding: 15px; border-radius: 6px; border-left: 4px solid #10b981; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1 style="margin: 0;">✅ Cita Confirmada</h1>
-          <p style="margin: 8px 0 0 0;">Nexu - Refacciones Pro</p>
-        </div>
-        
-        <div class="content">
-          <p>Hola <strong>${data.name}</strong>,</p>
-          
-          <p>Hemos recibido tu solicitud de cita para tu <strong>${data.appliance}</strong>.</p>
-          
-          <div class="section">
-            <h3 style="margin-top: 0; color: #1e293b;">📅 Detalles de tu Cita</h3>
-            <p><strong>Fecha solicitada:</strong> ${formattedDate}</p>
-            <p><strong>Horario:</strong> ${timeLabels[data.time as keyof typeof timeLabels]}</p>
-            <p><strong>Zona:</strong> ${data.zone.replace("-", " ")}</p>
-            <p><strong>ID de cita:</strong> <code>${data.appointmentId}</code></p>
-          </div>
-
-          <div class="highlight">
-            <h4 style="margin-top: 0; color: #166534;">🔔 Próximos Pasos:</h4>
-            <ul style="color: #166534; margin-bottom: 0;">
-              <li>Un técnico te contactará en las próximas 2 horas</li>
-              <li>Confirmaremos la fecha y hora definitiva</li>
-              <li>Te enviaremos un recordatorio 24h antes</li>
-            </ul>
-          </div>
-
-          <p>Si tienes alguna pregunta, puedes contactarnos:</p>
-          <p>
-            📱 WhatsApp: <a href="https://wa.me/523338766231">(33) 3876-6231</a><br>
-            📧 Email: info@nexu.mx
-          </p>
-
-          <p>¡Gracias por confiar en Nexu!</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `
-
   try {
+    // Test simple con Resend
     const result = await resend.emails.send({
-      from: "Nexu Confirmaciones <confirmaciones@nexu.mx>",
-      to: [data.email],
-      subject: `✅ Cita Confirmada - ${data.appointmentId}`,
-      html: clientHtml,
-      tags: [
-        { name: "category", value: "client-confirmation" },
-        { name: "appointment-id", value: data.appointmentId },
-      ],
+      from: "onboarding@resend.dev",
+      to: ["davidbarrera.ar@gmail.com"],
+      subject: "✅ Test Nexu - Configuración Exitosa",
+      html: `
+        <h1>🎉 ¡Resend Configurado Correctamente!</h1>
+        <p>El sistema de emails de Nexu está funcionando perfectamente.</p>
+        <p>Ahora recibirás automáticamente todas las citas agendadas.</p>
+        <hr>
+        <small>Test enviado: ${new Date().toLocaleString("es-MX")}</small>
+      `,
     })
 
     return {
       success: true,
       emailId: result.data?.id,
-      recipient: data.email,
+      message: "Configuración exitosa. Revisa tu email.",
     }
   } catch (error) {
-    console.error("❌ Error enviando confirmación al cliente:", error)
-    return null
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error desconocido",
+      solution: "Verifica tu API key de Resend",
+    }
   }
 }
