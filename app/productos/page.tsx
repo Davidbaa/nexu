@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,82 +9,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Filter, ShoppingCart, Wrench } from "lucide-react"
 import Image from "next/image"
 import Header from "@/components/header"
-
-const productos = [
-  {
-    id: 1,
-    name: "Bomba de Agua Universal",
-    brand: "LG",
-    category: "Lavadoras",
-    price: 850,
-    image: "/placeholder.svg?height=200&width=200",
-    availability: "En Stock",
-    description: "Bomba de agua compatible con modelos LG WM series",
-    installationAvailable: true,
-  },
-  {
-    id: 2,
-    name: "Filtro de Agua Refrigerador",
-    brand: "Samsung",
-    category: "Refrigeradores",
-    price: 1200,
-    image: "/placeholder.svg?height=200&width=200",
-    availability: "En Stock",
-    description: "Filtro de agua original Samsung RF series",
-    installationAvailable: true,
-  },
-  {
-    id: 3,
-    name: "Resistencia Calentador",
-    brand: "Whirlpool",
-    category: "Calentadores",
-    price: 650,
-    image: "/placeholder.svg?height=200&width=200",
-    availability: "2-3 días",
-    description: "Resistencia eléctrica para calentadores Whirlpool",
-    installationAvailable: true,
-  },
-  {
-    id: 4,
-    name: "Motor Ventilador",
-    brand: "Mabe",
-    category: "Refrigeradores",
-    price: 980,
-    image: "/placeholder.svg?height=200&width=200",
-    availability: "En Stock",
-    description: "Motor ventilador para refrigeradores Mabe",
-    installationAvailable: true,
-  },
-  {
-    id: 5,
-    name: "Termostato Digital",
-    brand: "GE",
-    category: "Hornos",
-    price: 1450,
-    image: "/placeholder.svg?height=200&width=200",
-    availability: "En Stock",
-    description: "Termostato digital para hornos GE Profile",
-    installationAvailable: true,
-  },
-  {
-    id: 6,
-    name: "Correa Lavadora",
-    brand: "Maytag",
-    category: "Lavadoras",
-    price: 320,
-    image: "/placeholder.svg?height=200&width=200",
-    availability: "En Stock",
-    description: "Correa de transmisión para lavadoras Maytag",
-    installationAvailable: false,
-  },
-]
+import { type Product, productsStore } from "@/lib/products-store"
 
 export default function ProductosPage() {
+  const [products, setProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedBrand, setSelectedBrand] = useState("all")
 
-  const filteredProducts = productos.filter((product) => {
+  useEffect(() => {
+    setProducts(productsStore.getAllProducts())
+  }, [])
+
+  const filteredProducts = products.filter((product) => {
     const matchesSearch =
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.brand.toLowerCase().includes(searchTerm.toLowerCase())
@@ -94,8 +31,8 @@ export default function ProductosPage() {
     return matchesSearch && matchesCategory && matchesBrand
   })
 
-  const categories = [...new Set(productos.map((p) => p.category))]
-  const brands = [...new Set(productos.map((p) => p.brand))]
+  const categories = productsStore.getCategories()
+  const brands = productsStore.getBrands()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -184,6 +121,7 @@ export default function ProductosPage() {
                   >
                     {product.availability}
                   </Badge>
+                  {product.sku && <Badge className="absolute top-2 left-2 bg-gray-800">{product.sku}</Badge>}
                 </div>
 
                 <CardHeader>
@@ -203,6 +141,10 @@ export default function ProductosPage() {
 
                 <CardContent>
                   <p className="text-gray-600 mb-4">{product.description}</p>
+
+                  {product.stock && (
+                    <div className="text-sm text-gray-500 mb-2">Stock disponible: {product.stock} unidades</div>
+                  )}
 
                   {product.installationAvailable && (
                     <div className="flex items-center text-green-600 mb-4">
