@@ -30,7 +30,7 @@ export async function sendAppointmentEmail(data: AppointmentData) {
   console.log("📧 Iniciando envío de email de cita...")
 
   try {
-    // Obtener instancia de Resend
+    // Obtener instancia de Resend solo cuando se necesite
     const resend = getResendInstance()
     const adminEmail = "davidbarrera.ar@gmail.com"
 
@@ -224,7 +224,7 @@ export async function sendClientConfirmation(data: AppointmentData) {
   }
 
   try {
-    // Obtener instancia de Resend
+    // Obtener instancia de Resend solo cuando se necesite
     const resend = getResendInstance()
 
     // Formatear datos
@@ -372,7 +372,7 @@ export async function testResendConfiguration() {
   try {
     console.log("🧪 Iniciando test de configuración de Resend...")
 
-    // Obtener instancia de Resend
+    // Obtener instancia de Resend solo cuando se necesite
     const resend = getResendInstance()
 
     console.log("📧 Enviando email de prueba...")

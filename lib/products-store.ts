@@ -1,7 +1,3 @@
-"use client"
-
-import React from "react"
-
 export interface Product {
   id: string
   name: string
@@ -19,24 +15,25 @@ export interface Product {
 }
 
 export interface ProductStats {
-  totalProducts: number
-  availableProducts: number
+  total: number
+  available: number
+  outOfStock: number
   totalValue: number
-  lowStockProducts: number
-  totalCategories: number
+  categories: Record<string, number>
+  brands: Record<string, number>
 }
 
-// Productos por defecto
+// Productos por defecto para demostración
 const defaultProducts: Product[] = [
   {
     id: "1",
-    name: "Motor de Lavadora LG",
-    sku: "LG-MOT-001",
-    brand: "LG",
-    category: "Lavadora",
+    name: "Motor para Lavadora Samsung",
+    sku: "MOT-SAM-001",
+    brand: "Samsung",
+    category: "motores",
     price: 2500,
     stock: 5,
-    description: "Motor original para lavadoras LG. Compatible con modelos WM2016CW, WM2101HW, WM2301HR.",
+    description: "Motor original para lavadoras Samsung de 15kg. Compatible con modelos WA15F7S2UWW, WA13F5S3QWY.",
     imageUrl: "/placeholder.svg?height=300&width=300",
     available: true,
     installationRequired: true,
@@ -45,13 +42,13 @@ const defaultProducts: Product[] = [
   },
   {
     id: "2",
-    name: "Compresor Refrigerador Samsung",
-    sku: "SAM-COMP-002",
-    brand: "Samsung",
-    category: "Refrigerador",
-    price: 4200,
+    name: "Compresor Refrigerador LG",
+    sku: "COMP-LG-002",
+    brand: "LG",
+    category: "compresores",
+    price: 3200,
     stock: 3,
-    description: "Compresor original Samsung para refrigeradores de 18-22 pies cúbicos.",
+    description: "Compresor hermético para refrigeradores LG. Modelo R134a, 1/4 HP.",
     imageUrl: "/placeholder.svg?height=300&width=300",
     available: true,
     installationRequired: true,
@@ -60,26 +57,73 @@ const defaultProducts: Product[] = [
   },
   {
     id: "3",
-    name: "Resistencia Horno Whirlpool",
-    sku: "WHP-RES-003",
+    name: "Resistencia Secadora Whirlpool",
+    sku: "RES-WHI-003",
     brand: "Whirlpool",
-    category: "Horno",
+    category: "resistencias",
     price: 850,
     stock: 8,
-    description: "Resistencia de calentamiento para hornos Whirlpool. 2500W.",
+    description: "Resistencia de calentamiento para secadoras Whirlpool. 5400W, 240V.",
     imageUrl: "/placeholder.svg?height=300&width=300",
     available: true,
     installationRequired: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
+  {
+    id: "4",
+    name: "Bomba de Agua Bosch",
+    sku: "BOMB-BOS-004",
+    brand: "Bosch",
+    category: "bombas",
+    price: 1200,
+    stock: 0,
+    description: "Bomba de drenaje para lavavajillas Bosch. Incluye filtro y mangueras.",
+    imageUrl: "/placeholder.svg?height=300&width=300",
+    available: false,
+    installationRequired: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ]
 
 class ProductsStore {
-  private storageKey = "nexu_products"
+  private products: Product[] = []
   private listeners: (() => void)[] = []
 
-  // Suscribirse a cambios
+  constructor() {
+    this.loadProducts()
+  }
+
+  private loadProducts() {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("nexu-products")
+      if (stored) {
+        try {
+          this.products = JSON.parse(stored)
+        } catch (error) {
+          console.error("Error loading products from localStorage:", error)
+          this.products = [...defaultProducts]
+          this.saveProducts()
+        }
+      } else {
+        this.products = [...defaultProducts]
+        this.saveProducts()
+      }
+    }
+  }
+
+  private saveProducts() {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("nexu-products", JSON.stringify(this.products))
+      this.notifyListeners()
+    }
+  }
+
+  private notifyListeners() {
+    this.listeners.forEach((listener) => listener())
+  }
+
   subscribe(listener: () => void) {
     this.listeners.push(listener)
     return () => {
@@ -87,171 +131,143 @@ class ProductsStore {
     }
   }
 
-  // Notificar cambios
-  private notify() {
-    this.listeners.forEach((listener) => listener())
-  }
-
-  // Obtener productos
   getProducts(): Product[] {
-    if (typeof window === "undefined") return defaultProducts
-
-    try {
-      const stored = localStorage.getItem(this.storageKey)
-      if (stored) {
-        return JSON.parse(stored)
-      }
-
-      // Si no hay productos guardados, usar los por defecto
-      this.saveProducts(defaultProducts)
-      return defaultProducts
-    } catch {
-      return defaultProducts
-    }
+    return [...this.products]
   }
 
-  // Guardar productos
-  saveProducts(products: Product[]): void {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(this.storageKey, JSON.stringify(products))
-      this.notify()
-    }
+  getProduct(id: string): Product | undefined {
+    return this.products.find((p) => p.id === id)
   }
 
-  // Importar productos desde JSON
-  importFromJSON(jsonData: string): { success: boolean; message: string; imported: number } {
-    try {
-      const data = JSON.parse(jsonData)
-
-      if (!Array.isArray(data)) {
-        return { success: false, message: "El JSON debe contener un array de productos", imported: 0 }
-      }
-
-      const validProducts: Product[] = []
-
-      for (const item of data) {
-        // Validar campos requeridos
-        if (!item.name || !item.sku || !item.price) {
-          continue
-        }
-
-        const product: Product = {
-          id: item.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          name: item.name,
-          sku: item.sku,
-          brand: item.brand || "Sin marca",
-          category: item.category || "General",
-          price: Number(item.price) || 0,
-          stock: Number(item.stock) || 0,
-          description: item.description || "",
-          imageUrl: item.imageUrl || "/placeholder.svg?height=300&width=300",
-          available: item.available !== false,
-          installationRequired: item.installationRequired === true,
-          createdAt: item.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-
-        validProducts.push(product)
-      }
-
-      if (validProducts.length > 0) {
-        this.saveProducts(validProducts)
-        return {
-          success: true,
-          message: `${validProducts.length} productos importados correctamente`,
-          imported: validProducts.length,
-        }
-      } else {
-        return { success: false, message: "No se encontraron productos válidos", imported: 0 }
-      }
-    } catch (error) {
-      return { success: false, message: "Error al procesar el JSON: " + error, imported: 0 }
+  addProduct(product: Omit<Product, "id" | "createdAt" | "updatedAt">): Product {
+    const newProduct: Product = {
+      ...product,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
+    this.products.push(newProduct)
+    this.saveProducts()
+    return newProduct
   }
 
-  // Exportar productos a JSON
+  updateProduct(id: string, updates: Partial<Omit<Product, "id" | "createdAt">>): Product | null {
+    const index = this.products.findIndex((p) => p.id === id)
+    if (index === -1) return null
+
+    this.products[index] = {
+      ...this.products[index],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    }
+    this.saveProducts()
+    return this.products[index]
+  }
+
+  deleteProduct(id: string): boolean {
+    const index = this.products.findIndex((p) => p.id === id)
+    if (index === -1) return false
+
+    this.products.splice(index, 1)
+    this.saveProducts()
+    return true
+  }
+
+  importProducts(products: Omit<Product, "id" | "createdAt" | "updatedAt">[]): Product[] {
+    const newProducts = products.map((product) => ({
+      ...product,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }))
+
+    this.products.push(...newProducts)
+    this.saveProducts()
+    return newProducts
+  }
+
+  replaceAllProducts(products: Omit<Product, "id" | "createdAt" | "updatedAt">[]): Product[] {
+    const newProducts = products.map((product) => ({
+      ...product,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }))
+
+    this.products = newProducts
+    this.saveProducts()
+    return newProducts
+  }
+
+  clearProducts(): void {
+    this.products = []
+    this.saveProducts()
+  }
+
+  resetToDefaults(): void {
+    this.products = [...defaultProducts]
+    this.saveProducts()
+  }
+
+  getStats(): ProductStats {
+    const stats: ProductStats = {
+      total: this.products.length,
+      available: this.products.filter((p) => p.available && p.stock > 0).length,
+      outOfStock: this.products.filter((p) => p.stock === 0).length,
+      totalValue: this.products.reduce((sum, p) => sum + p.price * p.stock, 0),
+      categories: {},
+      brands: {},
+    }
+
+    this.products.forEach((product) => {
+      // Contar categorías
+      stats.categories[product.category] = (stats.categories[product.category] || 0) + 1
+
+      // Contar marcas
+      stats.brands[product.brand] = (stats.brands[product.brand] || 0) + 1
+    })
+
+    return stats
+  }
+
+  searchProducts(query: string): Product[] {
+    const lowercaseQuery = query.toLowerCase()
+    return this.products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(lowercaseQuery) ||
+        product.sku.toLowerCase().includes(lowercaseQuery) ||
+        product.brand.toLowerCase().includes(lowercaseQuery) ||
+        product.category.toLowerCase().includes(lowercaseQuery) ||
+        product.description.toLowerCase().includes(lowercaseQuery),
+    )
+  }
+
+  filterProducts(filters: {
+    category?: string
+    brand?: string
+    available?: boolean
+    minPrice?: number
+    maxPrice?: number
+    inStock?: boolean
+  }): Product[] {
+    return this.products.filter((product) => {
+      if (filters.category && product.category !== filters.category) return false
+      if (filters.brand && product.brand !== filters.brand) return false
+      if (filters.available !== undefined && product.available !== filters.available) return false
+      if (filters.minPrice !== undefined && product.price < filters.minPrice) return false
+      if (filters.maxPrice !== undefined && product.price > filters.maxPrice) return false
+      if (filters.inStock !== undefined && product.stock > 0 !== filters.inStock) return false
+      return true
+    })
+  }
+
   exportToJSON(): string {
-    const products = this.getProducts()
-    return JSON.stringify(products, null, 2)
+    return JSON.stringify(this.products, null, 2)
   }
 
-  // Importar desde CSV
-  importFromCSV(csvData: string): { success: boolean; message: string; imported: number } {
-    try {
-      const lines = csvData.trim().split("\n")
-      if (lines.length < 2) {
-        return {
-          success: false,
-          message: "El CSV debe tener al menos una fila de encabezados y una de datos",
-          imported: 0,
-        }
-      }
-
-      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase())
-      const products: Product[] = []
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(",").map((v) => v.trim())
-
-        if (values.length !== headers.length) continue
-
-        const productData: any = {}
-        headers.forEach((header, index) => {
-          productData[header] = values[index]
-        })
-
-        // Mapear campos comunes
-        const nameField = headers.find((h) => h.includes("name") || h.includes("nombre"))
-        const skuField = headers.find((h) => h.includes("sku") || h.includes("codigo"))
-        const priceField = headers.find((h) => h.includes("price") || h.includes("precio"))
-
-        if (!nameField || !skuField || !priceField) continue
-
-        const product: Product = {
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          name: productData[nameField] || "",
-          sku: productData[skuField] || "",
-          brand: productData[headers.find((h) => h.includes("brand") || h.includes("marca")) || ""] || "Sin marca",
-          category:
-            productData[headers.find((h) => h.includes("category") || h.includes("categoria")) || ""] || "General",
-          price: Number(productData[priceField]) || 0,
-          stock: Number(productData[headers.find((h) => h.includes("stock") || h.includes("inventario")) || ""]) || 0,
-          description:
-            productData[headers.find((h) => h.includes("description") || h.includes("descripcion")) || ""] || "",
-          imageUrl:
-            productData[headers.find((h) => h.includes("image") || h.includes("imagen")) || ""] ||
-            "/placeholder.svg?height=300&width=300",
-          available:
-            productData[headers.find((h) => h.includes("available") || h.includes("disponible")) || ""] !== "false",
-          installationRequired:
-            productData[headers.find((h) => h.includes("installation") || h.includes("instalacion")) || ""] === "true",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-
-        if (product.name && product.sku && product.price > 0) {
-          products.push(product)
-        }
-      }
-
-      if (products.length > 0) {
-        this.saveProducts(products)
-        return {
-          success: true,
-          message: `${products.length} productos importados desde CSV`,
-          imported: products.length,
-        }
-      } else {
-        return { success: false, message: "No se encontraron productos válidos en el CSV", imported: 0 }
-      }
-    } catch (error) {
-      return { success: false, message: "Error al procesar el CSV: " + error, imported: 0 }
-    }
-  }
-
-  // Exportar a CSV
   exportToCSV(): string {
-    const products = this.getProducts()
+    if (this.products.length === 0) return ""
+
     const headers = [
       "id",
       "name",
@@ -270,11 +286,15 @@ class ProductsStore {
 
     const csvContent = [
       headers.join(","),
-      ...products.map((product) =>
+      ...this.products.map((product) =>
         headers
           .map((header) => {
             const value = product[header as keyof Product]
-            return typeof value === "string" && value.includes(",") ? `"${value}"` : String(value)
+            // Escapar comillas y envolver en comillas si contiene comas
+            if (typeof value === "string" && (value.includes(",") || value.includes('"'))) {
+              return `"${value.replace(/"/g, '""')}"`
+            }
+            return value
           })
           .join(","),
       ),
@@ -282,115 +302,7 @@ class ProductsStore {
 
     return csvContent
   }
-
-  // Métodos existentes
-  addProduct(productData: Omit<Product, "id" | "createdAt" | "updatedAt">): Product {
-    const products = this.getProducts()
-    const newProduct: Product = {
-      ...productData,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-
-    products.push(newProduct)
-    this.saveProducts(products)
-    return newProduct
-  }
-
-  updateProduct(id: string, updates: Partial<Omit<Product, "id" | "createdAt">>): Product | null {
-    const products = this.getProducts()
-    const index = products.findIndex((p) => p.id === id)
-
-    if (index === -1) return null
-
-    products[index] = {
-      ...products[index],
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    }
-
-    this.saveProducts(products)
-    return products[index]
-  }
-
-  deleteProduct(id: string): boolean {
-    const products = this.getProducts()
-    const filteredProducts = products.filter((p) => p.id !== id)
-
-    if (filteredProducts.length === products.length) return false
-
-    this.saveProducts(filteredProducts)
-    return true
-  }
-
-  getProductById(id: string): Product | null {
-    const products = this.getProducts()
-    return products.find((p) => p.id === id) || null
-  }
-
-  searchProducts(query: string): Product[] {
-    const products = this.getProducts()
-    const lowercaseQuery = query.toLowerCase()
-
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(lowercaseQuery) ||
-        p.brand.toLowerCase().includes(lowercaseQuery) ||
-        p.sku.toLowerCase().includes(lowercaseQuery) ||
-        p.description.toLowerCase().includes(lowercaseQuery),
-    )
-  }
-
-  getStats(): ProductStats {
-    const products = this.getProducts()
-    return {
-      totalProducts: products.length,
-      availableProducts: products.filter((p) => p.available).length,
-      totalValue: products.reduce((sum, p) => sum + p.price * p.stock, 0),
-      lowStockProducts: products.filter((p) => p.stock < 5).length,
-      totalCategories: new Set(products.map((p) => p.category)).size,
-    }
-  }
-
-  // Limpiar todos los productos
-  clearAllProducts(): void {
-    this.saveProducts([])
-  }
-
-  // Resetear a productos por defecto
-  resetToDefault(): void {
-    this.saveProducts(defaultProducts)
-  }
 }
 
+// Instancia singleton
 export const productsStore = new ProductsStore()
-
-// Hook para React
-export function useProductStore() {
-  const [products, setProducts] = React.useState<Product[]>([])
-
-  React.useEffect(() => {
-    setProducts(productsStore.getProducts())
-
-    const unsubscribe = productsStore.subscribe(() => {
-      setProducts(productsStore.getProducts())
-    })
-
-    return unsubscribe
-  }, [])
-
-  return {
-    products,
-    addProduct: productsStore.addProduct.bind(productsStore),
-    updateProduct: productsStore.updateProduct.bind(productsStore),
-    deleteProduct: productsStore.deleteProduct.bind(productsStore),
-    getStats: productsStore.getStats.bind(productsStore),
-    importFromJSON: productsStore.importFromJSON.bind(productsStore),
-    importFromCSV: productsStore.importFromCSV.bind(productsStore),
-    exportToJSON: productsStore.exportToJSON.bind(productsStore),
-    exportToCSV: productsStore.exportToCSV.bind(productsStore),
-    clearAllProducts: productsStore.clearAllProducts.bind(productsStore),
-    resetToDefault: productsStore.resetToDefault.bind(productsStore),
-  }
-}

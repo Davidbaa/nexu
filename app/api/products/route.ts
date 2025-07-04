@@ -1,32 +1,56 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Simulación de base de datos en memoria para el ejemplo
-// En producción, esto se conectaría a tu base de datos real
-const products: any[] = []
+// Simulamos el store del lado del servidor
+// En producción, esto se conectaría a una base de datos real
+const serverProducts: any[] = []
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const id = searchParams.get("id")
+    const search = searchParams.get("search")
     const category = searchParams.get("category")
-    const available = searchParams.get("available")
+    const brand = searchParams.get("brand")
 
-    let filteredProducts = products
-
-    if (category) {
-      filteredProducts = filteredProducts.filter((p) => p.category.toLowerCase() === category.toLowerCase())
+    // Si se solicita un producto específico
+    if (id) {
+      const product = serverProducts.find((p) => p.id === id)
+      if (!product) {
+        return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
+      }
+      return NextResponse.json(product)
     }
 
-    if (available !== null) {
-      filteredProducts = filteredProducts.filter((p) => p.available === (available === "true"))
+    let filteredProducts = [...serverProducts]
+
+    // Aplicar filtros
+    if (search) {
+      const searchLower = search.toLowerCase()
+      filteredProducts = filteredProducts.filter(
+        (product) =>
+          product.name.toLowerCase().includes(searchLower) ||
+          product.sku.toLowerCase().includes(searchLower) ||
+          product.brand.toLowerCase().includes(searchLower) ||
+          product.description.toLowerCase().includes(searchLower),
+      )
+    }
+
+    if (category) {
+      filteredProducts = filteredProducts.filter((product) => product.category === category)
+    }
+
+    if (brand) {
+      filteredProducts = filteredProducts.filter((product) => product.brand === brand)
     }
 
     return NextResponse.json({
-      success: true,
-      data: filteredProducts,
+      products: filteredProducts,
       total: filteredProducts.length,
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Error al obtener productos" }, { status: 500 })
+    console.error("Error en GET /api/products:", error)
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
 
@@ -34,72 +58,90 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    // Validar campos requeridos
-    if (!body.name || !body.sku || !body.price) {
-      return NextResponse.json({ success: false, error: "Campos requeridos: name, sku, price" }, { status: 400 })
-    }
+    // Validar si es un array de productos o un solo producto
+    const products = Array.isArray(body) ? body : [body]
 
-    const newProduct = {
-      id: Date.now().toString(),
-      name: body.name,
-      sku: body.sku,
-      brand: body.brand || "Sin marca",
-      category: body.category || "General",
-      price: Number(body.price),
-      stock: Number(body.stock) || 0,
-      description: body.description || "",
-      imageUrl: body.imageUrl || "/placeholder.svg?height=300&width=300",
-      available: body.available !== false,
-      installationRequired: body.installationRequired === true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
+    const newProducts = []
 
-    products.push(newProduct)
+    for (const productData of products) {
+      // Validar campos requeridos
+      if (!productData.name || !productData.sku) {
+        return NextResponse.json({ error: "Campos requeridos: name, sku" }, { status: 400 })
+      }
+
+      // Verificar que el SKU no exista
+      if (serverProducts.some((p) => p.sku === productData.sku)) {
+        return NextResponse.json({ error: `SKU ${productData.sku} ya existe` }, { status: 409 })
+      }
+
+      const newProduct = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        name: productData.name,
+        sku: productData.sku,
+        brand: productData.brand || "Sin marca",
+        category: productData.category || "general",
+        price: Number(productData.price) || 0,
+        stock: Number(productData.stock) || 0,
+        description: productData.description || "",
+        imageUrl: productData.imageUrl || "/placeholder.svg?height=300&width=300",
+        available: productData.available !== false,
+        installationRequired: productData.installationRequired === true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      serverProducts.push(newProduct)
+      newProducts.push(newProduct)
+    }
 
     return NextResponse.json(
       {
         success: true,
-        data: newProduct,
-        message: "Producto creado exitosamente",
+        products: newProducts,
+        message: `${newProducts.length} producto(s) creado(s) exitosamente`,
       },
       { status: 201 },
     )
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Error al crear producto" }, { status: 500 })
+    console.error("Error en POST /api/products:", error)
+    return NextResponse.json({ error: "Error procesando la solicitud" }, { status: 400 })
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json()
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
 
     if (!id) {
-      return NextResponse.json({ success: false, error: "ID de producto requerido" }, { status: 400 })
+      return NextResponse.json({ error: "ID del producto requerido" }, { status: 400 })
     }
 
-    const productIndex = products.findIndex((p) => p.id === id)
+    const body = await request.json()
+    const productIndex = serverProducts.findIndex((p) => p.id === id)
 
     if (productIndex === -1) {
-      return NextResponse.json({ success: false, error: "Producto no encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
-    products[productIndex] = {
-      ...products[productIndex],
+    // Actualizar producto
+    const updatedProduct = {
+      ...serverProducts[productIndex],
       ...body,
       id, // Mantener el ID original
       updatedAt: new Date().toISOString(),
     }
 
+    serverProducts[productIndex] = updatedProduct
+
     return NextResponse.json({
       success: true,
-      data: products[productIndex],
+      product: updatedProduct,
       message: "Producto actualizado exitosamente",
     })
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Error al actualizar producto" }, { status: 500 })
+    console.error("Error en PUT /api/products:", error)
+    return NextResponse.json({ error: "Error procesando la solicitud" }, { status: 400 })
   }
 }
 
@@ -109,23 +151,24 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get("id")
 
     if (!id) {
-      return NextResponse.json({ success: false, error: "ID de producto requerido" }, { status: 400 })
+      return NextResponse.json({ error: "ID del producto requerido" }, { status: 400 })
     }
 
-    const productIndex = products.findIndex((p) => p.id === id)
+    const productIndex = serverProducts.findIndex((p) => p.id === id)
 
     if (productIndex === -1) {
-      return NextResponse.json({ success: false, error: "Producto no encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
-    const deletedProduct = products.splice(productIndex, 1)[0]
+    const deletedProduct = serverProducts.splice(productIndex, 1)[0]
 
     return NextResponse.json({
       success: true,
-      data: deletedProduct,
+      product: deletedProduct,
       message: "Producto eliminado exitosamente",
     })
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Error al eliminar producto" }, { status: 500 })
+    console.error("Error en DELETE /api/products:", error)
+    return NextResponse.json({ error: "Error procesando la solicitud" }, { status: 500 })
   }
 }

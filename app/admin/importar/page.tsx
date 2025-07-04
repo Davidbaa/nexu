@@ -2,85 +2,177 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import {
-  Upload,
-  Download,
-  FileText,
-  Database,
-  RefreshCw,
-  Trash2,
-  AlertCircle,
-  CheckCircle,
-  Copy,
-  ExternalLink,
-} from "lucide-react"
-import { useProductStore } from "@/lib/products-store"
-import AdminGuard from "@/components/admin-guard"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { productsStore } from "@/lib/products-store"
+import { Upload, Download, FileText, Database, AlertCircle, CheckCircle, Trash2, RotateCcw } from "lucide-react"
 
 export default function ImportarPage() {
-  const { products, importFromJSON, importFromCSV, exportToJSON, exportToCSV, clearAllProducts, resetToDefault } =
-    useProductStore()
-
   const [jsonInput, setJsonInput] = useState("")
   const [csvInput, setCsvInput] = useState("")
-  const [importResult, setImportResult] = useState<{ success: boolean; message: string; imported: number } | null>(null)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [stats, setStats] = useState(productsStore.getStats())
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Actualizar estadísticas
+  const updateStats = () => {
+    setStats(productsStore.getStats())
+  }
+
+  // Suscribirse a cambios en el store
+  useState(() => {
+    const unsubscribe = productsStore.subscribe(updateStats)
+    return unsubscribe
+  })
+
+  const showMessage = (type: "success" | "error", text: string) => {
+    setMessage({ type, text })
+    setTimeout(() => setMessage(null), 5000)
+  }
 
   const handleJSONImport = async () => {
+    if (!jsonInput.trim()) {
+      showMessage("error", "Por favor ingresa contenido JSON válido")
+      return
+    }
+
     setIsLoading(true)
     try {
-      const result = importFromJSON(jsonInput)
-      setImportResult(result)
-      if (result.success) {
-        setJsonInput("")
+      const products = JSON.parse(jsonInput)
+
+      if (!Array.isArray(products)) {
+        throw new Error("El JSON debe ser un array de productos")
       }
+
+      // Validar estructura básica
+      const validatedProducts = products.map((product, index) => {
+        if (!product.name || !product.sku || typeof product.price !== "number") {
+          throw new Error(`Producto ${index + 1}: faltan campos requeridos (name, sku, price)`)
+        }
+
+        return {
+          name: product.name,
+          sku: product.sku,
+          brand: product.brand || "Sin marca",
+          category: product.category || "general",
+          price: Number(product.price),
+          stock: Number(product.stock) || 0,
+          description: product.description || "",
+          imageUrl: product.imageUrl || "/placeholder.svg?height=300&width=300",
+          available: product.available !== false,
+          installationRequired: product.installationRequired === true,
+        }
+      })
+
+      const imported = productsStore.importProducts(validatedProducts)
+      showMessage("success", `${imported.length} productos importados exitosamente`)
+      setJsonInput("")
+      updateStats()
     } catch (error) {
-      setImportResult({ success: false, message: "Error inesperado", imported: 0 })
+      showMessage("error", `Error al importar JSON: ${error instanceof Error ? error.message : "Error desconocido"}`)
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   const handleCSVImport = async () => {
+    if (!csvInput.trim()) {
+      showMessage("error", "Por favor ingresa contenido CSV válido")
+      return
+    }
+
     setIsLoading(true)
     try {
-      const result = importFromCSV(csvInput)
-      setImportResult(result)
-      if (result.success) {
-        setCsvInput("")
+      const lines = csvInput.trim().split("\n")
+      const headers = lines[0].split(",").map((h) => h.trim().replace(/"/g, ""))
+
+      if (lines.length < 2) {
+        throw new Error("El CSV debe tener al menos una fila de datos")
       }
+
+      const products = lines.slice(1).map((line, index) => {
+        const values = line.split(",").map((v) => v.trim().replace(/"/g, ""))
+        const product: any = {}
+
+        headers.forEach((header, i) => {
+          product[header] = values[i] || ""
+        })
+
+        // Validar campos requeridos
+        if (!product.name || !product.sku) {
+          throw new Error(`Fila ${index + 2}: faltan campos requeridos (name, sku)`)
+        }
+
+        return {
+          name: product.name,
+          sku: product.sku,
+          brand: product.brand || "Sin marca",
+          category: product.category || "general",
+          price: Number(product.price) || 0,
+          stock: Number(product.stock) || 0,
+          description: product.description || "",
+          imageUrl: product.imageUrl || "/placeholder.svg?height=300&width=300",
+          available: product.available !== "false",
+          installationRequired: product.installationRequired === "true",
+        }
+      })
+
+      const imported = productsStore.importProducts(products)
+      showMessage("success", `${imported.length} productos importados desde CSV`)
+      setCsvInput("")
+      updateStats()
     } catch (error) {
-      setImportResult({ success: false, message: "Error inesperado", imported: 0 })
+      showMessage("error", `Error al importar CSV: ${error instanceof Error ? error.message : "Error desconocido"}`)
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: "json" | "csv") => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     const reader = new FileReader()
     reader.onload = (e) => {
       const content = e.target?.result as string
-      if (type === "json") {
+
+      if (file.name.endsWith(".json")) {
         setJsonInput(content)
-      } else {
+      } else if (file.name.endsWith(".csv")) {
         setCsvInput(content)
       }
     }
     reader.readAsText(file)
   }
 
-  const downloadFile = (content: string, filename: string, type: string) => {
-    const blob = new Blob([content], { type })
+  const handleExport = (format: "json" | "csv") => {
+    const products = productsStore.getProducts()
+    if (products.length === 0) {
+      showMessage("error", "No hay productos para exportar")
+      return
+    }
+
+    let content: string
+    let filename: string
+    let mimeType: string
+
+    if (format === "json") {
+      content = productsStore.exportToJSON()
+      filename = `nexu-productos-${new Date().toISOString().split("T")[0]}.json`
+      mimeType = "application/json"
+    } else {
+      content = productsStore.exportToCSV()
+      filename = `nexu-productos-${new Date().toISOString().split("T")[0]}.csv`
+      mimeType = "text/csv"
+    }
+
+    const blob = new Blob([content], { type: mimeType })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -89,353 +181,288 @@ export default function ImportarPage() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+
+    showMessage("success", `Productos exportados como ${format.toUpperCase()}`)
   }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
+  const handleClearAll = () => {
+    if (confirm("¿Estás seguro de que quieres eliminar TODOS los productos? Esta acción no se puede deshacer.")) {
+      productsStore.clearProducts()
+      showMessage("success", "Todos los productos han sido eliminados")
+      updateStats()
+    }
+  }
+
+  const handleResetDefaults = () => {
+    if (confirm("¿Quieres restaurar los productos por defecto? Esto eliminará todos los productos actuales.")) {
+      productsStore.resetToDefaults()
+      showMessage("success", "Productos restaurados a valores por defecto")
+      updateStats()
+    }
   }
 
   const exampleJSON = `[
   {
-    "name": "Filtro de Agua Samsung",
-    "sku": "SAM-FLT-001",
+    "name": "Motor Lavadora Samsung",
+    "sku": "MOT-SAM-001",
     "brand": "Samsung",
-    "category": "Refrigerador",
-    "price": 450,
-    "stock": 12,
-    "description": "Filtro de agua original para refrigeradores Samsung",
-    "imageUrl": "https://ejemplo.com/imagen.jpg",
-    "available": true,
-    "installationRequired": false
-  },
-  {
-    "name": "Bomba de Drenaje LG",
-    "sku": "LG-PUMP-002",
-    "brand": "LG",
-    "category": "Lavadora",
-    "price": 890,
-    "stock": 6,
-    "description": "Bomba de drenaje para lavadoras LG",
+    "category": "motores",
+    "price": 2500,
+    "stock": 5,
+    "description": "Motor original para lavadoras Samsung",
+    "imageUrl": "/placeholder.svg?height=300&width=300",
     "available": true,
     "installationRequired": true
   }
 ]`
 
   const exampleCSV = `name,sku,brand,category,price,stock,description,available,installationRequired
-Filtro de Agua Samsung,SAM-FLT-001,Samsung,Refrigerador,450,12,Filtro de agua original para refrigeradores Samsung,true,false
-Bomba de Drenaje LG,LG-PUMP-002,LG,Lavadora,890,6,Bomba de drenaje para lavadoras LG,true,true
-Termostato Whirlpool,WHP-TERM-003,Whirlpool,Horno,320,8,Termostato de control de temperatura,true,false`
+Motor Lavadora Samsung,MOT-SAM-001,Samsung,motores,2500,5,Motor original para lavadoras Samsung,true,true
+Compresor LG,COMP-LG-002,LG,compresores,3200,3,Compresor hermético para refrigeradores,true,true`
 
   return (
-    <AdminGuard>
-      <div className="container mx-auto p-6 max-w-6xl">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">📦 Gestión Externa de Inventario</h1>
-            <p className="text-muted-foreground">Importa y exporta tu inventario desde diferentes fuentes</p>
-          </div>
-          <div className="flex gap-2">
-            <Badge variant="outline">{products.length} productos</Badge>
-            <Button onClick={() => (window.location.href = "/admin/productos")} variant="outline">
-              Volver al Panel
-            </Button>
-          </div>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Gestión Externa de Inventario</h1>
+          <p className="text-muted-foreground">Importa, exporta y gestiona tu inventario desde archivos externos</p>
         </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => handleExport("json")}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar JSON
+          </Button>
+          <Button variant="outline" onClick={() => handleExport("csv")}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar CSV
+          </Button>
+        </div>
+      </div>
 
-        {importResult && (
-          <Alert className={`mb-6 ${importResult.success ? "border-green-500" : "border-red-500"}`}>
-            <div className="flex items-center">
-              {importResult.success ? (
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              ) : (
-                <AlertCircle className="h-4 w-4 text-red-600" />
-              )}
-              <AlertDescription className="ml-2">
-                {importResult.message}
-                {importResult.success && importResult.imported > 0 && (
-                  <span className="ml-2 font-semibold">({importResult.imported} productos)</span>
-                )}
-              </AlertDescription>
-            </div>
-          </Alert>
-        )}
+      {message && (
+        <Alert className={message.type === "success" ? "border-green-500" : "border-red-500"}>
+          {message.type === "success" ? (
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          ) : (
+            <AlertCircle className="h-4 w-4 text-red-500" />
+          )}
+          <AlertDescription className={message.type === "success" ? "text-green-700" : "text-red-700"}>
+            {message.text}
+          </AlertDescription>
+        </Alert>
+      )}
 
-        <Tabs defaultValue="import" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="import">Importar</TabsTrigger>
-            <TabsTrigger value="export">Exportar</TabsTrigger>
-            <TabsTrigger value="api">API Externa</TabsTrigger>
-            <TabsTrigger value="manage">Gestionar</TabsTrigger>
-          </TabsList>
+      {/* Estadísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Productos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Disponibles</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.available}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Sin Stock</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.outOfStock}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${stats.totalValue.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-          <TabsContent value="import" className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Importar JSON */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Database className="h-5 w-5" />
-                    Importar desde JSON
-                  </CardTitle>
-                  <CardDescription>Pega tu JSON o sube un archivo .json con los productos</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="json-file">Subir archivo JSON</Label>
-                    <Input
-                      id="json-file"
-                      type="file"
-                      accept=".json"
-                      onChange={(e) => handleFileUpload(e, "json")}
-                      className="mt-1"
-                    />
-                  </div>
+      <Tabs defaultValue="import" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="import">Importar</TabsTrigger>
+          <TabsTrigger value="api">API REST</TabsTrigger>
+          <TabsTrigger value="manage">Gestionar</TabsTrigger>
+        </TabsList>
 
-                  <div>
-                    <Label htmlFor="json-input">O pegar JSON directamente</Label>
-                    <Textarea
-                      id="json-input"
-                      placeholder="Pega tu JSON aquí..."
-                      value={jsonInput}
-                      onChange={(e) => setJsonInput(e.target.value)}
-                      rows={8}
-                      className="mt-1 font-mono text-sm"
-                    />
-                  </div>
-
-                  <Button onClick={handleJSONImport} disabled={!jsonInput.trim() || isLoading} className="w-full">
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isLoading ? "Importando..." : "Importar JSON"}
-                  </Button>
-
-                  <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium mb-2">Ver ejemplo de JSON</summary>
-                    <div className="bg-gray-100 p-3 rounded-md">
-                      <pre className="text-xs overflow-x-auto">{exampleJSON}</pre>
-                      <Button size="sm" variant="outline" onClick={() => copyToClipboard(exampleJSON)} className="mt-2">
-                        <Copy className="mr-1 h-3 w-3" />
-                        Copiar ejemplo
-                      </Button>
-                    </div>
-                  </details>
-                </CardContent>
-              </Card>
-
-              {/* Importar CSV */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Importar desde CSV
-                  </CardTitle>
-                  <CardDescription>Sube un archivo CSV o pega el contenido directamente</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="csv-file">Subir archivo CSV</Label>
-                    <Input
-                      id="csv-file"
-                      type="file"
-                      accept=".csv"
-                      onChange={(e) => handleFileUpload(e, "csv")}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="csv-input">O pegar CSV directamente</Label>
-                    <Textarea
-                      id="csv-input"
-                      placeholder="Pega tu CSV aquí..."
-                      value={csvInput}
-                      onChange={(e) => setCsvInput(e.target.value)}
-                      rows={8}
-                      className="mt-1 font-mono text-sm"
-                    />
-                  </div>
-
-                  <Button onClick={handleCSVImport} disabled={!csvInput.trim() || isLoading} className="w-full">
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isLoading ? "Importando..." : "Importar CSV"}
-                  </Button>
-
-                  <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium mb-2">Ver ejemplo de CSV</summary>
-                    <div className="bg-gray-100 p-3 rounded-md">
-                      <pre className="text-xs overflow-x-auto">{exampleCSV}</pre>
-                      <Button size="sm" variant="outline" onClick={() => copyToClipboard(exampleCSV)} className="mt-2">
-                        <Copy className="mr-1 h-3 w-3" />
-                        Copiar ejemplo
-                      </Button>
-                    </div>
-                  </details>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="export" className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Download className="h-5 w-5" />
-                    Exportar a JSON
-                  </CardTitle>
-                  <CardDescription>Descarga todos tus productos en formato JSON</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    onClick={() => downloadFile(exportToJSON(), "productos.json", "application/json")}
-                    className="w-full"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Descargar JSON ({products.length} productos)
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Download className="h-5 w-5" />
-                    Exportar a CSV
-                  </CardTitle>
-                  <CardDescription>Descarga todos tus productos en formato CSV para Excel</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button onClick={() => downloadFile(exportToCSV(), "productos.csv", "text/csv")} className="w-full">
-                    <Download className="mr-2 h-4 w-4" />
-                    Descargar CSV ({products.length} productos)
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="api" className="space-y-6">
+        <TabsContent value="import" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Importar JSON */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <ExternalLink className="h-5 w-5" />
-                  API Externa (Próximamente)
+                  <FileText className="w-5 h-5" />
+                  Importar JSON
                 </CardTitle>
-                <CardDescription>Conecta sistemas externos para sincronizar automáticamente</CardDescription>
+                <CardDescription>Pega tu contenido JSON o sube un archivo .json</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Esta funcionalidad estará disponible cuando conectes una base de datos real (Supabase/Neon).
-                    Permitirá sincronización automática desde:
-                  </AlertDescription>
-                </Alert>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg">
-                    <h4 className="font-semibold mb-2">🛒 Sistemas de Inventario</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Sistemas ERP</li>
-                      <li>• Software de punto de venta</li>
-                      <li>• Hojas de cálculo en la nube</li>
-                    </ul>
-                  </div>
-
-                  <div className="p-4 border rounded-lg">
-                    <h4 className="font-semibold mb-2">🔄 Sincronización</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Webhooks automáticos</li>
-                      <li>• API REST endpoints</li>
-                      <li>• Sincronización programada</li>
-                    </ul>
-                  </div>
+                <div>
+                  <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileUpload} className="hidden" />
+                  <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full mb-4">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Subir archivo JSON
+                  </Button>
                 </div>
 
-                <Button disabled className="w-full">
-                  Configurar API Externa (Próximamente)
+                <Textarea
+                  placeholder="Pega tu JSON aquí..."
+                  value={jsonInput}
+                  onChange={(e) => setJsonInput(e.target.value)}
+                  rows={10}
+                  className="font-mono text-sm"
+                />
+
+                <Button onClick={handleJSONImport} disabled={isLoading || !jsonInput.trim()} className="w-full">
+                  {isLoading ? "Importando..." : "Importar JSON"}
                 </Button>
+
+                <details className="text-sm">
+                  <summary className="cursor-pointer font-medium">Ver ejemplo JSON</summary>
+                  <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-x-auto">{exampleJSON}</pre>
+                </details>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          <TabsContent value="manage" className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <RefreshCw className="h-5 w-5" />
-                    Resetear Inventario
-                  </CardTitle>
-                  <CardDescription>Volver a los productos de ejemplo por defecto</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button onClick={resetToDefault} variant="outline" className="w-full bg-transparent">
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Resetear a Productos por Defecto
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Trash2 className="h-5 w-5" />
-                    Limpiar Inventario
-                  </CardTitle>
-                  <CardDescription>Eliminar todos los productos (¡Cuidado!)</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    onClick={() => {
-                      if (confirm("¿Estás seguro? Esto eliminará TODOS los productos.")) {
-                        clearAllProducts()
-                        setImportResult({ success: true, message: "Inventario limpiado completamente", imported: 0 })
-                      }
-                    }}
-                    variant="destructive"
-                    className="w-full"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Limpiar Todo el Inventario
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-
+            {/* Importar CSV */}
             <Card>
               <CardHeader>
-                <CardTitle>📊 Estado Actual del Inventario</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="w-5 h-5" />
+                  Importar CSV
+                </CardTitle>
+                <CardDescription>Compatible con Excel, Google Sheets, etc.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{products.length}</div>
-                    <div className="text-sm text-muted-foreground">Total Productos</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">
-                      {products.filter((p) => p.available).length}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Disponibles</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">
-                      {new Set(products.map((p) => p.category)).size}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Categorías</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">
-                      ${products.reduce((sum, p) => sum + p.price * p.stock, 0).toLocaleString()}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Valor Total</div>
-                  </div>
+              <CardContent className="space-y-4">
+                <div>
+                  <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="csv-upload" />
+                  <Button
+                    variant="outline"
+                    onClick={() => document.getElementById("csv-upload")?.click()}
+                    className="w-full mb-4"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Subir archivo CSV
+                  </Button>
                 </div>
+
+                <Textarea
+                  placeholder="Pega tu CSV aquí..."
+                  value={csvInput}
+                  onChange={(e) => setCsvInput(e.target.value)}
+                  rows={10}
+                  className="font-mono text-sm"
+                />
+
+                <Button onClick={handleCSVImport} disabled={isLoading || !csvInput.trim()} className="w-full">
+                  {isLoading ? "Importando..." : "Importar CSV"}
+                </Button>
+
+                <details className="text-sm">
+                  <summary className="cursor-pointer font-medium">Ver ejemplo CSV</summary>
+                  <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-x-auto">{exampleCSV}</pre>
+                </details>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </AdminGuard>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="api" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>API REST para Gestión Externa</CardTitle>
+              <CardDescription>Usa estas rutas para integrar con sistemas externos</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="secondary">GET</Badge>
+                    <code className="text-sm">/api/products</code>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Obtener todos los productos</p>
+                </div>
+
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="default">POST</Badge>
+                    <code className="text-sm">/api/products</code>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Crear nuevos productos</p>
+                </div>
+
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="outline">PUT</Badge>
+                    <code className="text-sm">/api/products?id=123</code>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Actualizar producto existente</p>
+                </div>
+
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="destructive">DELETE</Badge>
+                    <code className="text-sm">/api/products?id=123</code>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Eliminar producto</p>
+                </div>
+              </div>
+
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Documentación completa:</strong> Ve a <code>/admin/api-docs</code> para ejemplos de código y
+                  guías detalladas.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="manage" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gestión del Inventario</CardTitle>
+              <CardDescription>Herramientas para administrar tu inventario</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button
+                  variant="outline"
+                  onClick={handleResetDefaults}
+                  className="flex items-center gap-2 bg-transparent"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Restaurar Productos por Defecto
+                </Button>
+
+                <Button variant="destructive" onClick={handleClearAll} className="flex items-center gap-2">
+                  <Trash2 className="w-4 h-4" />
+                  Eliminar Todos los Productos
+                </Button>
+              </div>
+
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Nota:</strong> Todas las acciones se guardan automáticamente en el navegador. Para
+                  persistencia permanente, considera conectar una base de datos.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }
