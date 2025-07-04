@@ -48,7 +48,7 @@ export async function sendAppointmentEmail(data: AppointmentData) {
       day: "numeric",
     })
 
-    const timeLabels = {
+    const timeLabels: { [key: string]: string } = {
       morning: "Mañana (9:00 - 12:00)",
       afternoon: "Tarde (12:00 - 17:00)",
       evening: "Noche (17:00 - 20:00)",
@@ -108,7 +108,7 @@ export async function sendAppointmentEmail(data: AppointmentData) {
             <h2>🔧 Detalles del Servicio</h2>
             <div class="info-row"><span class="info-label">Electrodoméstico:</span><span class="info-value" style="text-transform: capitalize; color: #dc2626; font-weight: 700;">${data.appliance}</span></div>
             <div class="info-row"><span class="info-label">Fecha solicitada:</span><span class="info-value" style="font-weight: 700;">${formattedDate}</span></div>
-            <div class="info-row"><span class="info-label">Horario:</span><span class="info-value" style="font-weight: 700;">${timeLabels[data.time as keyof typeof timeLabels]}</span></div>
+            <div class="info-row"><span class="info-label">Horario:</span><span class="info-value" style="font-weight: 700;">${timeLabels[data.time]}</span></div>
             <div class="problem-box"><div style="font-weight: 600; color: #64748b; margin-bottom: 10px;">Problema descrito:</div><div style="color: #1e293b; line-height: 1.6; font-size: 15px;">${data.problem}</div></div>
           </div>
           <div class="contact-buttons">
@@ -182,7 +182,7 @@ export async function sendClientConfirmation(data: AppointmentData) {
       month: "long",
       day: "numeric",
     })
-    const timeLabels = {
+    const timeLabels: { [key: string]: string } = {
       morning: "Mañana (9:00 - 12:00)",
       afternoon: "Tarde (12:00 - 17:00)",
       evening: "Noche (17:00 - 20:00)",
@@ -218,7 +218,7 @@ export async function sendClientConfirmation(data: AppointmentData) {
             <h2>📋 Resumen de tu Solicitud</h2>
             <div class="info-row"><span class="info-label">Electrodoméstico:</span><span class="info-value" style="text-transform: capitalize; font-weight: 700;">${data.appliance}</span></div>
             <div class="info-row"><span class="info-label">Fecha solicitada:</span><span class="info-value">${formattedDate}</span></div>
-            <div class="info-row"><span class="info-label">Horario:</span><span class="info-value">${timeLabels[data.time as keyof typeof timeLabels]}</span></div>
+            <div class="info-row"><span class="info-label">Horario:</span><span class="info-value">${timeLabels[data.time]}</span></div>
             <div class="info-row"><span class="info-label">Zona:</span><span class="info-value" style="text-transform: capitalize;">${data.zone.replace("-", " ")}</span></div>
           </div>
           <div class="section">
