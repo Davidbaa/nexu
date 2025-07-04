@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { sendAppointmentEmail } from "./send-email"
+import { sendAppointmentEmail, sendClientConfirmation } from "./send-email"
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +13,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validar formato de fecha
+    const appointmentDate = new Date(appointmentData.date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (appointmentDate < today) {
+      return NextResponse.json({ error: "La fecha no puede ser en el pasado" }, { status: 400 })
+    }
+
     // Generar ID único para la cita
     const appointmentId = generateAppointmentId()
 
@@ -22,13 +31,29 @@ export async function POST(request: NextRequest) {
       appointmentId,
     }
 
-    // Enviar email de notificación
+    const emailResults = {
+      adminEmail: null as any,
+      clientEmail: null as any,
+    }
+
+    // Enviar email de notificación al administrador
     try {
-      const emailResult = await sendAppointmentEmail(completeData)
-      console.log("✅ Email enviado exitosamente:", emailResult)
+      emailResults.adminEmail = await sendAppointmentEmail(completeData)
+      console.log("✅ Email admin enviado:", emailResults.adminEmail.emailId)
     } catch (emailError) {
-      console.error("❌ Error enviando email:", emailError)
-      // No fallar la cita si el email falla, solo registrar el error
+      console.error("❌ Error enviando email admin:", emailError)
+      // Continuar aunque falle el email
+    }
+
+    // Enviar confirmación al cliente (si tiene email)
+    if (appointmentData.email) {
+      try {
+        emailResults.clientEmail = await sendClientConfirmation(completeData)
+        console.log("✅ Confirmación cliente enviada:", emailResults.clientEmail?.emailId)
+      } catch (emailError) {
+        console.error("❌ Error enviando confirmación cliente:", emailError)
+        // No es crítico si falla
+      }
     }
 
     // Respuesta exitosa
@@ -36,8 +61,18 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Cita agendada exitosamente",
       appointmentId: appointmentId,
-      emailSent: true,
-      recipient: "davidbarrera.ar@gmail.com",
+      emails: {
+        adminSent: !!emailResults.adminEmail?.success,
+        clientSent: !!emailResults.clientEmail?.success,
+        adminEmailId: emailResults.adminEmail?.emailId,
+        clientEmailId: emailResults.clientEmail?.emailId,
+      },
+      nextSteps: [
+        "El administrador ha sido notificado",
+        "Un técnico te contactará en 2 horas",
+        "Recibirás confirmación de fecha definitiva",
+        "Te enviaremos recordatorio 24h antes",
+      ],
     })
   } catch (error) {
     console.error("❌ Error procesando cita:", error)
@@ -55,5 +90,6 @@ export async function POST(request: NextRequest) {
 function generateAppointmentId() {
   const timestamp = Date.now()
   const random = Math.random().toString(36).substr(2, 6).toUpperCase()
-  return `NEXU-${timestamp}-${random}`
+  const date = new Date().toISOString().slice(2, 10).replace(/-/g, "")
+  return `NEXU-${date}-${random}`
 }
