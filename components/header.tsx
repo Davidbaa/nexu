@@ -29,7 +29,6 @@ export default function Header() {
               { href: "/productos", label: "Productos" },
               { href: "/tecnicos", label: "Técnicos" },
               { href: "/afiliate", label: "Afiliate" },
-              { href: "/identificar", label: "IA Identificar" },
               { href: "/faq", label: "FAQ" },
               { href: "/contacto", label: "Contacto" },
             ].map((item) => (
@@ -65,7 +64,6 @@ export default function Header() {
                 { href: "/productos", label: "Productos" },
                 { href: "/tecnicos", label: "Técnicos" },
                 { href: "/afiliate", label: "Afiliate" },
-                { href: "/identificar", label: "IA Identificar" },
                 { href: "/faq", label: "FAQ" },
                 { href: "/contacto", label: "Contacto" },
               ].map((item) => (

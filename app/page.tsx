@@ -5,14 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
-  Brain,
+  Search,
   Users,
   Shield,
   Star,
   Menu,
   X,
   ArrowRight,
-  CheckCircle,
   Clock,
   MapPin,
   Wrench,
@@ -21,20 +20,22 @@ import {
   MessageCircle,
   Award,
   Target,
-  Cpu,
   Settings,
+  Calendar,
 } from "lucide-react"
 import Link from "next/link"
 import LiveChat from "@/components/live-chat"
+import AppointmentBooking from "@/components/appointment-booking"
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [appointmentOpen, setAppointmentOpen] = useState(false)
 
   const features = [
     {
-      icon: Brain,
-      title: "IA Inteligente",
-      description: "Identifica tu electrodoméstico con precisión del 95% usando tecnología avanzada",
+      icon: Search,
+      title: "Diagnóstico Experto",
+      description: "Nuestros técnicos identifican el problema y la refacción exacta que necesitas",
       color: "text-blue-600",
       bgColor: "bg-blue-50",
       step: "01",
@@ -60,8 +61,8 @@ export default function HomePage() {
   const benefits = [
     {
       icon: Target,
-      title: "Precisión Garantizada",
-      description: "95% de precisión en identificación",
+      title: "Diagnóstico Preciso",
+      description: "Identificación exacta del problema",
       color: "text-blue-600",
     },
     {
@@ -180,26 +181,30 @@ export default function HomePage() {
         <div className="container mx-auto">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center px-4 py-2 bg-blue-50 border border-blue-100 rounded-full text-blue-700 font-medium text-sm mb-8">
-              <Cpu className="w-4 h-4 mr-2" />
-              Tecnología IA + Técnicos Expertos
+              <Award className="w-4 h-4 mr-2" />
+              Técnicos Certificados + Refacciones Originales
             </div>
 
             <h1 className="text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
               Refacciones y Servicio
               <span className="block bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
-                Inteligente
+                Profesional
               </span>
             </h1>
 
             <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
-              Identifica tu electrodoméstico con IA, encuentra la refacción exacta y agenda instalación profesional.
-              Todo en Guadalajara.
+              Encuentra la refacción exacta para tu electrodoméstico y agenda instalación profesional con técnicos
+              certificados. Todo en Guadalajara.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-              <Button size="lg" className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg px-8 py-4">
-                <Brain className="mr-2 h-5 w-5" />
-                Identificar con IA
+              <Button
+                size="lg"
+                className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg px-8 py-4"
+                onClick={() => setAppointmentOpen(true)}
+              >
+                <Calendar className="mr-2 h-5 w-5" />
+                Agendar Cita
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button size="lg" variant="outline" className="border-gray-200 px-8 py-4 bg-transparent">
@@ -258,72 +263,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* AI Section */}
-      <section className="py-20 px-6 bg-slate-900 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5"></div>
-        <div className="container mx-auto relative">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="inline-flex items-center px-4 py-2 bg-white/10 border border-white/20 rounded-full text-white/90 font-medium text-sm mb-6">
-                <Brain className="w-4 h-4 mr-2" />
-                Tecnología Avanzada
-              </div>
-
-              <h2 className="text-3xl lg:text-4xl font-bold mb-6">
-                Identificación Inteligente
-                <span className="block text-green-400">con IA</span>
-              </h2>
-
-              <p className="text-xl text-white/80 mb-8 leading-relaxed">
-                Nuestra IA analiza tu electrodoméstico y encuentra las refacciones exactas en segundos. Precisión del
-                95% garantizada.
-              </p>
-
-              <ul className="space-y-4 mb-8">
-                {[
-                  "Reconocimiento instantáneo de marca y modelo",
-                  "Base de datos de +10,000 electrodomésticos",
-                  "Recomendaciones personalizadas de refacciones",
-                  "Compatibilidad verificada automáticamente",
-                ].map((item, index) => (
-                  <li key={index} className="flex items-center text-white/90">
-                    <CheckCircle className="h-5 w-5 text-green-400 mr-3 flex-shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-
-              <Button className="bg-green-600 hover:bg-green-500 text-white shadow-lg">
-                <Brain className="mr-2 h-5 w-5" />
-                Probar IA Gratis
-              </Button>
-            </div>
-
-            <div className="relative">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-                <div className="bg-white/20 rounded-xl h-64 flex items-center justify-center mb-6">
-                  <Brain className="h-20 w-20 text-white/60" />
-                </div>
-                <div className="text-center">
-                  <p className="text-white/80 text-sm">Sube una imagen de tu electrodoméstico</p>
-                  <div className="flex justify-center mt-4 space-x-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <div
-                      className="w-2 h-2 bg-green-400 rounded-full animate-pulse"
-                      style={{ animationDelay: "0.2s" }}
-                    ></div>
-                    <div
-                      className="w-2 h-2 bg-green-400 rounded-full animate-pulse"
-                      style={{ animationDelay: "0.4s" }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Service Area */}
       <section className="py-20 px-6 bg-white">
         <div className="container mx-auto text-center">
@@ -372,9 +311,13 @@ export default function HomePage() {
             Únete a miles de clientes satisfechos que confían en Nexu para sus electrodomésticos
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="bg-white text-green-600 hover:bg-gray-50 shadow-lg px-8 py-4">
-              <Brain className="mr-2 h-5 w-5" />
-              Identificar Ahora
+            <Button
+              size="lg"
+              className="bg-white text-green-600 hover:bg-gray-50 shadow-lg px-8 py-4"
+              onClick={() => setAppointmentOpen(true)}
+            >
+              <Calendar className="mr-2 h-5 w-5" />
+              Agendar Cita
             </Button>
             <Button
               size="lg"
@@ -493,6 +436,9 @@ export default function HomePage() {
 
       {/* Live Chat */}
       <LiveChat />
+
+      {/* Appointment Booking Modal */}
+      <AppointmentBooking isOpen={appointmentOpen} onClose={() => setAppointmentOpen(false)} />
     </div>
   )
 }
