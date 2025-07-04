@@ -200,3 +200,199 @@ export async function sendAppointmentEmail(data: AppointmentData) {
     throw error
   }
 }
+
+// Nueva función para enviar confirmación al cliente
+export async function sendClientConfirmation(data: AppointmentData) {
+  // Verificar API key
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY no está configurada")
+  }
+
+  // Solo enviar si el cliente proporcionó email
+  if (!data.email) {
+    console.log("ℹ️ Cliente no proporcionó email, saltando confirmación")
+    return {
+      success: false,
+      reason: "No email provided",
+    }
+  }
+
+  // Formatear datos
+  const formattedDate = new Date(data.date).toLocaleDateString("es-MX", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+
+  const timeLabels = {
+    morning: "Mañana (9:00 - 12:00)",
+    afternoon: "Tarde (12:00 - 17:00)",
+    evening: "Noche (17:00 - 20:00)",
+  }
+
+  // Template HTML para cliente
+  const clientHtmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Confirmación de Cita - Nexu</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8fafc; }
+        .container { max-width: 600px; margin: 0 auto; background: white; }
+        .header { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 30px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+        .section { padding: 25px; border-bottom: 1px solid #e2e8f0; }
+        .section h2 { color: #1e293b; margin: 0 0 20px 0; font-size: 20px; font-weight: 600; }
+        .info-box { background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 15px 0; }
+        .success-box { background: #dcfce7; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin: 15px 0; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+        .info-label { font-weight: 600; color: #64748b; }
+        .info-value { color: #1e293b; font-weight: 500; }
+        .contact-info { background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center; }
+        .footer { background: #1e293b; color: white; padding: 25px; text-align: center; }
+        .appointment-id { font-family: monospace; font-size: 20px; font-weight: bold; margin: 10px 0; letter-spacing: 1px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>✅ Cita Recibida</h1>
+          <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 16px;">Nexu - Refacciones Pro</p>
+        </div>
+        
+        <div class="section">
+          <div class="success-box">
+            <h3 style="color: #166534; margin: 0 0 10px 0;">🎉 ¡Hola ${data.name}!</h3>
+            <p style="color: #166534; margin: 0;">
+              Hemos recibido tu solicitud de cita para tu ${data.appliance}. 
+              Un técnico certificado se pondrá en contacto contigo en las próximas 2 horas para confirmar la fecha y horario.
+            </p>
+          </div>
+
+          <h2>📋 Resumen de tu Solicitud</h2>
+          <div class="info-row">
+            <span class="info-label">Electrodoméstico:</span>
+            <span class="info-value" style="text-transform: capitalize; font-weight: 700;">${data.appliance}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Fecha solicitada:</span>
+            <span class="info-value">${formattedDate}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Horario:</span>
+            <span class="info-value">${timeLabels[data.time as keyof typeof timeLabels]}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Zona:</span>
+            <span class="info-value" style="text-transform: capitalize;">${data.zone.replace("-", " ")}</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>⏰ Próximos Pasos</h2>
+          <div class="info-box">
+            <ul style="color: #1e40af; margin: 0; padding-left: 20px;">
+              <li><strong>En 2 horas:</strong> Un técnico te contactará para confirmar</li>
+              <li><strong>24 horas antes:</strong> Te enviaremos un recordatorio</li>
+              <li><strong>El día de la cita:</strong> Diagnóstico gratuito y cotización</li>
+              <li><strong>Después del servicio:</strong> 30 días de garantía incluida</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="contact-info">
+            <h3 style="color: #1e293b; margin: 0 0 15px 0;">📱 ¿Necesitas Contactarnos?</h3>
+            <p style="margin: 0 0 15px 0; color: #64748b;">
+              Si tienes alguna pregunta o necesitas hacer cambios a tu cita:
+            </p>
+            <p style="margin: 0;">
+              <strong>WhatsApp:</strong> (33) 3876-6231<br>
+              <strong>Email:</strong> info@nexu.mx
+            </p>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p style="margin: 0; font-size: 14px; opacity: 0.8;">Tu ID de Cita:</p>
+          <div class="appointment-id">${data.appointmentId}</div>
+          <p style="font-size: 12px; opacity: 0.7; margin: 15px 0 0 0;">
+            Guarda este ID para futuras referencias
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  try {
+    console.log("📧 Enviando confirmación al cliente:", data.email)
+
+    const result = await resend.emails.send({
+      from: "Nexu Confirmaciones <onboarding@resend.dev>",
+      to: [data.email],
+      subject: `✅ Cita Recibida - ${data.appliance} - ${formattedDate}`,
+      html: clientHtmlContent,
+      tags: [
+        { name: "category", value: "client-confirmation" },
+        { name: "zone", value: data.zone },
+        { name: "appliance", value: data.appliance },
+      ],
+    })
+
+    console.log("✅ Confirmación enviada al cliente!")
+    console.log("📧 Email ID:", result.data?.id)
+
+    return {
+      success: true,
+      provider: "resend",
+      emailId: result.data?.id,
+      recipient: data.email,
+      appointmentId: data.appointmentId,
+    }
+  } catch (error) {
+    console.error("❌ Error enviando confirmación al cliente:", error)
+    throw error
+  }
+}
+
+// Función para verificar configuración (ya existía)
+export async function testResendConfiguration() {
+  if (!process.env.RESEND_API_KEY) {
+    return {
+      success: false,
+      error: "RESEND_API_KEY no configurada",
+      solution: "Agrega RESEND_API_KEY a tus variables de entorno",
+    }
+  }
+
+  try {
+    // Test simple con Resend
+    const result = await resend.emails.send({
+      from: "onboarding@resend.dev",
+      to: ["davidbarrera.ar@gmail.com"],
+      subject: "✅ Test Nexu - Configuración Exitosa",
+      html: `
+        <h1>🎉 ¡Resend Configurado Correctamente!</h1>
+        <p>El sistema de emails de Nexu está funcionando perfectamente.</p>
+        <p>Ahora recibirás automáticamente todas las citas agendadas.</p>
+        <hr>
+        <small>Test enviado: ${new Date().toLocaleString("es-MX")}</small>
+      `,
+    })
+
+    return {
+      success: true,
+      emailId: result.data?.id,
+      message: "Configuración exitosa. Revisa tu email.",
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error desconocido",
+      solution: "Verifica tu API key de Resend",
+    }
+  }
+}
