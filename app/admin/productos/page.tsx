@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -19,15 +20,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Edit, Trash2, Package, DollarSign, Eye } from "lucide-react"
+import { Plus, Edit, Trash2, Package, DollarSign, Eye, LogOut, User, Shield } from "lucide-react"
 import Image from "next/image"
 import { type Product, productsStore } from "@/lib/products-store"
-import Header from "@/components/header"
+import { AuthService } from "@/lib/auth"
+import AdminGuard from "@/components/admin-guard"
 
-export default function AdminProductsPage() {
+function AdminProductsContent() {
   const [products, setProducts] = useState<Product[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [currentUser, setCurrentUser] = useState<string>("")
+  const router = useRouter()
   const [formData, setFormData] = useState({
     name: "",
     brand: "",
@@ -43,7 +47,16 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     setProducts(productsStore.getAllProducts())
+    const user = AuthService.getCurrentUser()
+    if (user) {
+      setCurrentUser(user.username)
+    }
   }, [])
+
+  const handleLogout = () => {
+    AuthService.logout()
+    router.push("/admin/login")
+  }
 
   const resetForm = () => {
     setFormData({
@@ -112,14 +125,41 @@ export default function AdminProductsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      {/* Admin Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+                <Shield className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Panel de Administración</h1>
+                <p className="text-sm text-gray-500">Nexu - Gestión de Productos</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <User className="h-4 w-4" />
+                <span>Bienvenido, {currentUser}</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Cerrar Sesión
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
       <div className="py-8">
         <div className="container mx-auto px-4">
           <div className="mb-8">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-4xl font-bold text-gray-900 mb-4">Panel de Administración</h1>
-                <p className="text-xl text-gray-600">Gestiona tu inventario de refacciones</p>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">Gestión de Inventario</h2>
+                <p className="text-lg text-gray-600">Administra tu catálogo de refacciones</p>
               </div>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
@@ -381,5 +421,13 @@ export default function AdminProductsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AdminProductsPage() {
+  return (
+    <AdminGuard>
+      <AdminProductsContent />
+    </AdminGuard>
   )
 }

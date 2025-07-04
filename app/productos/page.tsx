@@ -9,86 +9,134 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Filter, ShoppingCart, Wrench } from "lucide-react"
 import Image from "next/image"
 import Header from "@/components/header"
+import LiveChat from "@/components/live-chat"
 import { type Product, productsStore } from "@/lib/products-store"
 
-export default function ProductosPage() {
+export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedBrand, setSelectedBrand] = useState("all")
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    setProducts(productsStore.getAllProducts())
+    // Simular carga
+    setTimeout(() => {
+      const allProducts = productsStore.getAllProducts()
+      setProducts(allProducts)
+      setFilteredProducts(allProducts)
+      setIsLoading(false)
+    }, 500)
   }, [])
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.brand.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory
-    const matchesBrand = selectedBrand === "all" || product.brand === selectedBrand
+  useEffect(() => {
+    let filtered = products
 
-    return matchesSearch && matchesCategory && matchesBrand
-  })
+    // Filtrar por búsqueda
+    if (searchTerm) {
+      filtered = productsStore.searchProducts(searchTerm)
+    }
+
+    // Filtrar por categoría
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter((product) => product.category === selectedCategory)
+    }
+
+    // Filtrar por marca
+    if (selectedBrand !== "all") {
+      filtered = filtered.filter((product) => product.brand === selectedBrand)
+    }
+
+    setFilteredProducts(filtered)
+  }, [searchTerm, selectedCategory, selectedBrand, products])
 
   const categories = productsStore.getCategories()
   const brands = productsStore.getBrands()
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="py-16">
+          <div className="container mx-auto px-4">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Cargando productos...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="py-8">
-        <div className="container mx-auto px-4">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Catálogo de Refacciones</h1>
-            <p className="text-xl text-gray-600">Encuentra la refacción exacta para tu electrodoméstico</p>
-          </div>
 
+      {/* Hero Section */}
+      <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6">Catálogo de Refacciones</h1>
+            <p className="text-xl mb-8 text-blue-100">
+              Encuentra las refacciones originales que necesitas para tus electrodomésticos
+            </p>
+            <div className="max-w-2xl mx-auto">
+              <div className="relative">
+                <Search className="absolute left-4 top-3 h-5 w-5 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Buscar por nombre, marca, modelo..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-12 h-12 text-gray-900"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="py-12">
+        <div className="container mx-auto px-4">
           {/* Filters */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Filter className="mr-2 h-5 w-5" />
-                Filtros de Búsqueda
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-4 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Buscar refacciones..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las categorías</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={selectedBrand} onValueChange={setSelectedBrand}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Marca" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las marcas</SelectItem>
-                    {brands.map((brand) => (
-                      <SelectItem key={brand} value={brand}>
-                        {brand}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <div className="mb-8">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex items-center space-x-2">
+                <Filter className="h-5 w-5 text-gray-600" />
+                <span className="font-medium text-gray-700">Filtros:</span>
+              </div>
+
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Todas las categorías" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las categorías</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Todas las marcas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las marcas</SelectItem>
+                  {brands.map((brand) => (
+                    <SelectItem key={brand} value={brand}>
+                      {brand}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {(searchTerm || selectedCategory !== "all" || selectedBrand !== "all") && (
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -97,89 +145,90 @@ export default function ProductosPage() {
                     setSelectedBrand("all")
                   }}
                 >
-                  Limpiar Filtros
+                  Limpiar filtros
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Products Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProducts.map((product) => (
-              <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="relative">
-                  <Image
-                    src={product.image || "/placeholder.svg"}
-                    alt={product.name}
-                    width={300}
-                    height={200}
-                    className="w-full h-48 object-cover"
-                  />
-                  <Badge
-                    className="absolute top-2 right-2"
-                    variant={product.availability === "En Stock" ? "default" : "secondary"}
-                  >
-                    {product.availability}
-                  </Badge>
-                  {product.sku && <Badge className="absolute top-2 left-2 bg-gray-800">{product.sku}</Badge>}
-                </div>
-
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{product.name}</CardTitle>
-                      <CardDescription>
-                        {product.brand} • {product.category}
-                      </CardDescription>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-blue-600">${product.price.toLocaleString()}</div>
-                      <div className="text-sm text-gray-500">MXN</div>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent>
-                  <p className="text-gray-600 mb-4">{product.description}</p>
-
-                  {product.stock && (
-                    <div className="text-sm text-gray-500 mb-2">Stock disponible: {product.stock} unidades</div>
-                  )}
-
-                  {product.installationAvailable && (
-                    <div className="flex items-center text-green-600 mb-4">
-                      <Wrench className="h-4 w-4 mr-2" />
-                      <span className="text-sm">Instalación disponible</span>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <Button className="flex-1 bg-blue-600 hover:bg-blue-700">
-                      <ShoppingCart className="mr-2 h-4 w-4" />
-                      Agregar al Carrito
-                    </Button>
-                    {product.installationAvailable && (
-                      <Button variant="outline" size="sm">
-                        + Instalación
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+              )}
+            </div>
           </div>
 
-          {filteredProducts.length === 0 && (
-            <div className="text-center py-12">
+          {/* Results Count */}
+          <div className="mb-6">
+            <p className="text-gray-600">
+              Mostrando {filteredProducts.length} de {products.length} productos
+            </p>
+          </div>
+
+          {/* Products Grid */}
+          {filteredProducts.length === 0 ? (
+            <div className="text-center py-16">
               <div className="text-gray-400 mb-4">
-                <Search className="mx-auto h-12 w-12" />
+                <Search className="h-16 w-16 mx-auto" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No se encontraron productos</h3>
-              <p className="text-gray-500">Intenta ajustar tus filtros de búsqueda</p>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">No se encontraron productos</h3>
+              <p className="text-gray-600">Intenta ajustar tus filtros o términos de búsqueda</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredProducts.map((product) => (
+                <Card key={product.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="p-0">
+                    <div className="relative">
+                      <Image
+                        src={product.image || "/placeholder.svg"}
+                        alt={product.name}
+                        width={300}
+                        height={200}
+                        className="w-full h-48 object-cover rounded-t-lg"
+                      />
+                      <Badge
+                        className="absolute top-2 right-2"
+                        variant={product.availability === "En Stock" ? "default" : "secondary"}
+                      >
+                        {product.availability}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="mb-2">
+                      <Badge variant="outline" className="text-xs">
+                        {product.brand}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs ml-1">
+                        {product.category}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-lg mb-2 line-clamp-2">{product.name}</CardTitle>
+                    <CardDescription className="text-sm mb-4 line-clamp-2">{product.description}</CardDescription>
+
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-2xl font-bold text-blue-600">${product.price.toLocaleString()}</div>
+                      {product.stock && <div className="text-sm text-gray-500">Stock: {product.stock}</div>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                        <ShoppingCart className="mr-2 h-4 w-4" />
+                        Agregar al Carrito
+                      </Button>
+
+                      {product.installationAvailable && (
+                        <Button variant="outline" className="w-full bg-transparent">
+                          <Wrench className="mr-2 h-4 w-4" />
+                          Incluir Instalación
+                        </Button>
+                      )}
+                    </div>
+
+                    {product.sku && <div className="mt-3 text-xs text-gray-500">SKU: {product.sku}</div>}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </div>
       </div>
+
+      <LiveChat />
     </div>
   )
 }

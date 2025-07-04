@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, Phone, MessageCircle, Settings } from "lucide-react"
+import { Menu, Phone, MessageCircle } from "lucide-react"
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
@@ -41,15 +41,6 @@ export default function Header() {
                 {item.name}
               </Link>
             ))}
-
-            {/* Admin Link */}
-            <Link
-              href="/admin/productos"
-              className="flex items-center text-gray-500 hover:text-blue-600 font-medium transition-colors"
-            >
-              <Settings className="h-4 w-4 mr-1" />
-              Admin
-            </Link>
           </nav>
 
           {/* Contact Buttons */}
@@ -87,15 +78,6 @@ export default function Header() {
                     {item.name}
                   </Link>
                 ))}
-
-                <Link
-                  href="/admin/productos"
-                  className="flex items-center text-lg font-medium text-gray-500 hover:text-blue-600 transition-colors"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Panel Admin
-                </Link>
 
                 <div className="pt-4 space-y-2">
                   <Button variant="outline" className="w-full bg-transparent" asChild>
